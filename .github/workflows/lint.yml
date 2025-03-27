@@ -1,0 +1,48 @@
+name: Lint All with Unified Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint:
+    name: Run Unified Lint
+    runs-on:
+      - runner-small
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Unified Lint
+        uses: ./.github/actions/unified-lint-action
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review  # 이미 적절히 설정됨
+          fail_level: warning
+          filter_mode: added
+          level: info  # warning에서 변경 (더 많은 이슈 표시)
+          # 필요없는 린팅 도구는 스킵 가능
+          skip_eslint: false
+          skip_stylelint: false
+          skip_markdownlint: false
+          skip_prettier: false
+          skip_misspell: false
+          # ESLint 설정
+          eslint_flags: "**/*.{js,jsx,ts,tsx}"
+          # Stylelint 설정
+          stylelint_input: "**/*.css"
+          # Prettier 설정
+          prettier_flags: "**/*.{js,jsx,ts,tsx,css,md,json,html}"
+          # Misspell 설정
+          misspell_locale: "US"
+          # debug mode
+          debug_mode: true

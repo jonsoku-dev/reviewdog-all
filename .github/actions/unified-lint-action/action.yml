@@ -1,0 +1,573 @@
+name: "Unified Lint Action"
+description: "Runs ESLint (with integrated Prettier), Stylelint, MarkdownLint, Misspell with reviewdog on a self-hosted runner."
+
+inputs:
+  github_token:
+    description: "GitHub Token to post review comments"
+    required: true
+    default: ${{ github.token }}
+
+  level:
+    description: "Report level for reviewdog [info,warning,error]"
+    required: false
+    default: "warning"
+
+  reporter:
+    description: "Reporter of reviewdog [github-pr-check,github-check,github-pr-review]."
+    required: false
+    default: "github-pr-review"
+
+  filter_mode:
+    description: "Reviewdog filter mode [added,diff_context,file,nofilter]."
+    required: false
+    default: "added"
+
+  fail_level:
+    description: "If set to none, always exit 0. Otherwise exit 1 if issues >= fail_level. [none,any,info,warning,error]"
+    required: false
+    default: "none"
+
+  fail_on_error:
+    description: "Deprecated, use fail_level instead. Exit code for reviewdog when errors are found [true,false]"
+    required: false
+    default: "false"
+
+  reviewdog_flags:
+    description: "Additional reviewdog flags"
+    required: false
+    default: ''
+
+  debug_mode:
+    description: "Enable debug output"
+    required: false
+    default: "false"
+
+  # 툴 활성화/비활성화 옵션
+  skip_eslint:
+    description: "Skip ESLint check"
+    required: false
+    default: "false"
+
+  skip_stylelint:
+    description: "Skip Stylelint check"
+    required: false
+    default: "false"
+
+  skip_markdownlint:
+    description: "Skip Markdownlint check"
+    required: false
+    default: "false"
+
+  skip_misspell:
+    description: "Skip Misspell check"
+    required: false
+    default: "false"
+
+  # ESLint 옵션
+  eslint_flags:
+    description: "Flags and args of eslint command"
+    required: false
+    default: "."
+  node_options:
+    description: "The NODE_OPTIONS environment variable to use with eslint"
+    required: false
+    default: ""
+  eslint_use_prettier:
+    description: "Use prettier through ESLint"
+    required: false
+    default: "true"
+  eslint_config_path:
+    description: "Path to custom ESLint config file in your repository"
+    required: false
+    default: ""
+  prettier_config_path:
+    description: "Path to custom Prettier config file in your repository"
+    required: false
+    default: ""
+
+  # Stylelint 옵션
+  stylelint_input:
+    description: "Files or glob for stylelint input"
+    required: false
+    default: "**/*.css"
+  stylelint_config:
+    description: "Stylelint config file path"
+    required: false
+    default: ""
+  stylelint_packages:
+    description: "Additional NPM packages to be installed for stylelint"
+    required: false
+    default: ""
+  stylelint_config_path:
+    description: "Path to custom Stylelint config file in your repository"
+    required: false
+    default: ""
+
+  # Markdownlint 옵션
+  markdownlint_flags:
+    description: "Options of markdownlint-cli command. Default: '.'"
+    required: false
+    default: '.'
+  markdownlint_config_path:
+    description: "Path to custom Markdownlint config file in your repository"
+    required: false
+    default: ""
+
+  # Misspell 옵션
+  misspell_locale:
+    description: "Locale for misspell (US/UK)"
+    required: false
+    default: "US"
+  misspell_ignore:
+    description: "Ignore a list of comma-separated words for misspell"
+    required: false
+    default: ""
+  misspell_path:
+    description: "Base directory to run misspell"
+    required: false
+    default: "."
+  misspell_pattern:
+    description: "File patterns of target files for misspell"
+    required: false
+    default: "*"
+  misspell_exclude:
+    description: "Exclude patterns of target files for misspell"
+    required: false
+    default: ""
+
+  # 패키지 버전
+  eslint_version:
+    description: "ESLint version to install"
+    required: false
+    default: "8.56.0"
+  prettier_version:
+    description: "Prettier version to install (for ESLint integration)"
+    required: false
+    default: "3.2.2"
+  stylelint_version:
+    description: "Stylelint version to install"
+    required: false
+    default: "16.2.0"
+  markdownlint_version:
+    description: "MarkdownLint CLI version to install"
+    required: false
+    default: "0.38.0"
+
+runs:
+  using: "composite"
+  steps:
+    # 1) GitHub 환경 변수 설정 - 항상 올바른 토큰 환경 변수 설정
+    - name: Setup GitHub environment variables
+      shell: bash
+      run: |
+        echo "REVIEWDOG_GITHUB_API_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+        echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+
+        # PR 정보 추출 (reviewdog가 필요로 함)
+        if [ -f "$GITHUB_EVENT_PATH" ]; then
+          PR_NUMBER=$(jq -r '.pull_request.number // empty' $GITHUB_EVENT_PATH)
+          if [ ! -z "$PR_NUMBER" ]; then
+            echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          fi
+        fi
+
+    # 2) 디버그 정보 출력
+    - name: Debug Info
+      shell: bash
+      if: inputs.debug_mode == 'true'
+      run: |
+        echo "=== DEBUGGING INFORMATION ==="
+        echo "GitHub context:"
+        echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+        echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+        echo "GITHUB_REF: $GITHUB_REF"
+        echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+        echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+
+        echo "=== INPUT PARAMETERS ==="
+        echo "reporter: ${{ inputs.reporter }}"
+        echo "filter_mode: ${{ inputs.filter_mode }}"
+        echo "level: ${{ inputs.level }}"
+        echo "fail_level: ${{ inputs.fail_level }}"
+
+        echo "=== TOOL STATUSES ==="
+        echo "skip_eslint: ${{ inputs.skip_eslint }}"
+        echo "eslint_use_prettier: ${{ inputs.eslint_use_prettier }}"
+        echo "skip_stylelint: ${{ inputs.skip_stylelint }}"
+        echo "skip_markdownlint: ${{ inputs.skip_markdownlint }}"
+        echo "skip_misspell: ${{ inputs.skip_misspell }}"
+
+        echo "=== CUSTOM CONFIG PATHS ==="
+        echo "eslint_config_path: ${{ inputs.eslint_config_path }}"
+        echo "prettier_config_path: ${{ inputs.prettier_config_path }}"
+        echo "stylelint_config_path: ${{ inputs.stylelint_config_path }}"
+        echo "markdownlint_config_path: ${{ inputs.markdownlint_config_path }}"
+
+        echo "=== TOKEN INFO (masked) ==="
+        echo "Token length: ${#GITHUB_TOKEN}"
+        echo "Token first 4 chars: ${GITHUB_TOKEN:0:4}***"
+
+        echo "=== DIRECTORY STRUCTURE ==="
+        ls -la
+
+    # 3) reviewdog 설정
+    - name: Setup reviewdog
+      uses: reviewdog/action-setup@e04ffabe3898a0af8d0fb1af00c188831c4b5893 # v1.3.2
+      with:
+        reviewdog_version: latest
+
+    # 4) 필요한 패키지 설치 - 루트 디렉토리에 모든 패키지 설치
+    - name: Setup packages in root directory
+      shell: bash
+      run: |
+        # package.json이 없는 경우 초기화
+        if [ ! -f "package.json" ]; then
+          echo '{
+            "name": "lint-tools",
+            "version": "1.0.0",
+            "description": "Package for linting tools",
+            "private": true
+          }' > package.json
+          echo "Created package.json in root directory"
+        fi
+
+        # 필요한 패키지 설치
+        PACKAGES_TO_INSTALL=""
+
+        if [ "${{ inputs.skip_eslint }}" != "true" ]; then
+          PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL eslint@${{ inputs.eslint_version }}"
+
+          # ESLint에 Prettier 통합 옵션이 활성화된 경우
+          if [ "${{ inputs.eslint_use_prettier }}" == "true" ]; then
+            PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL prettier@${{ inputs.prettier_version }} eslint-plugin-prettier eslint-config-prettier"
+          fi
+        fi
+
+        if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
+          PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL stylelint@${{ inputs.stylelint_version }}"
+        fi
+
+        if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
+          PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL markdownlint-cli@${{ inputs.markdownlint_version }}"
+        fi
+
+        if [ ! -z "$PACKAGES_TO_INSTALL" ]; then
+          echo "Installing packages: $PACKAGES_TO_INSTALL"
+          npm install --no-package-lock $PACKAGES_TO_INSTALL
+          echo "$(pwd)/node_modules/.bin" >> $GITHUB_PATH
+
+          if [ "${{ inputs.debug_mode }}" == "true" ]; then
+            echo "=== INSTALLED PACKAGES ==="
+            npm list --depth=0
+            echo "=== PATH ==="
+            echo "PATH: $PATH"
+
+            # 설치된 바이너리 확인
+            echo "=== INSTALLED BINARIES ==="
+            ls -la node_modules/.bin/
+          fi
+        fi
+
+    # 5) 각 도구별 필요한 설정 파일 생성, 복사, 또는 사용 - 사용자 설정 우선
+    - name: Setup configuration files
+      shell: bash
+      run: |
+        # ESLint 설정 확인 및 설정
+        if [ "${{ inputs.skip_eslint }}" != "true" ]; then
+          # 사용자가 지정한 경로의 ESLint 설정 파일 사용
+          if [ ! -z "${{ inputs.eslint_config_path }}" ] && [ -f "${{ inputs.eslint_config_path }}" ]; then
+            echo "Using custom ESLint config from specified path: ${{ inputs.eslint_config_path }}"
+            cp "${{ inputs.eslint_config_path }}" .eslintrc.json
+            echo "CREATED_ESLINT_CONFIG=true" >> $GITHUB_ENV
+          # 기존 루트 디렉토리 설정 파일 확인
+          elif [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f ".eslintrc.yaml" ] || [ -f ".eslintrc.yml" ] || [ -f ".eslintrc" ]; then
+            echo "Using existing ESLint config from repository root"
+            echo "CREATED_ESLINT_CONFIG=false" >> $GITHUB_ENV
+          # 기본 설정 파일 생성
+          else
+            echo "No ESLint config found, creating default configuration"
+
+            # ESLint에 Prettier 통합을 위한 설정 추가
+            if [ "${{ inputs.eslint_use_prettier }}" == "true" ]; then
+              echo '{
+                "env": {
+                  "browser": true,
+                  "node": true,
+                  "es6": true
+                },
+                "extends": [
+                  "eslint:recommended",
+                  "prettier"
+                ],
+                "plugins": [
+                  "prettier"
+                ],
+                "parserOptions": {
+                  "ecmaVersion": 2020,
+                  "sourceType": "module"
+                },
+                "rules": {
+                  "no-unused-vars": "warn",
+                  "no-console": "off",
+                  "prettier/prettier": "error"
+                }
+              }' > .eslintrc.json
+            else
+              echo '{
+                "env": {
+                  "browser": true,
+                  "node": true,
+                  "es6": true
+                },
+                "extends": "eslint:recommended",
+                "parserOptions": {
+                  "ecmaVersion": 2020,
+                  "sourceType": "module"
+                },
+                "rules": {
+                  "no-unused-vars": "warn",
+                  "no-console": "off"
+                }
+              }' > .eslintrc.json
+            fi
+
+            echo "Created temporary ESLint config: .eslintrc.json"
+            echo "CREATED_ESLINT_CONFIG=true" >> $GITHUB_ENV
+          fi
+
+          # ESLint ignore 파일 확인
+          if [ -f ".eslintignore" ]; then
+            echo "Using existing .eslintignore file from repository root"
+          fi
+        fi
+
+        # Prettier 설정 확인 및 설정
+        if [ "${{ inputs.skip_eslint }}" != "true" ] && [ "${{ inputs.eslint_use_prettier }}" == "true" ]; then
+          # 사용자가 지정한 경로의 Prettier 설정 파일 사용
+          if [ ! -z "${{ inputs.prettier_config_path }}" ] && [ -f "${{ inputs.prettier_config_path }}" ]; then
+            echo "Using custom Prettier config from specified path: ${{ inputs.prettier_config_path }}"
+            cp "${{ inputs.prettier_config_path }}" .prettierrc.js
+            echo "CREATED_PRETTIER_CONFIG=true" >> $GITHUB_ENV
+          # 기존 루트 디렉토리 설정 파일 확인
+          elif [ -f ".prettierrc.js" ] || [ -f ".prettierrc.json" ] || [ -f ".prettierrc.yaml" ] || [ -f ".prettierrc.yml" ] || [ -f ".prettierrc" ]; then
+            echo "Using existing Prettier config from repository root"
+            echo "CREATED_PRETTIER_CONFIG=false" >> $GITHUB_ENV
+          # 기본 설정 파일 생성
+          else
+            echo "No Prettier config found, creating default configuration"
+            echo 'module.exports = {
+              printWidth: 100,
+              tabWidth: 2,
+              useTabs: false,
+              semi: true,
+              singleQuote: true,
+              trailingComma: "es5",
+              bracketSpacing: true,
+              arrowParens: "avoid"
+            };' > .prettierrc.js
+            echo "Created temporary Prettier config: .prettierrc.js"
+            echo "CREATED_PRETTIER_CONFIG=true" >> $GITHUB_ENV
+          fi
+
+          # Prettier ignore 파일 확인
+          if [ -f ".prettierignore" ]; then
+            echo "Using existing .prettierignore file from repository root"
+          fi
+        fi
+
+        # Stylelint 설정 확인 및 설정
+        if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
+          # 사용자가 지정한 경로의 Stylelint 설정 파일 사용
+          if [ ! -z "${{ inputs.stylelint_config_path }}" ] && [ -f "${{ inputs.stylelint_config_path }}" ]; then
+            echo "Using custom Stylelint config from specified path: ${{ inputs.stylelint_config_path }}"
+            cp "${{ inputs.stylelint_config_path }}" .stylelintrc.json
+            echo "CREATED_STYLELINT_CONFIG=true" >> $GITHUB_ENV
+          # 기존 루트 디렉토리 설정 파일 확인
+          elif [ -f ".stylelintrc.js" ] || [ -f ".stylelintrc.json" ] || [ -f ".stylelintrc.yaml" ] || [ -f ".stylelintrc.yml" ] || [ -f ".stylelintrc" ]; then
+            echo "Using existing Stylelint config from repository root"
+            echo "CREATED_STYLELINT_CONFIG=false" >> $GITHUB_ENV
+          # 기본 설정 파일 생성
+          else
+            echo "No Stylelint config found, creating default configuration"
+            echo '{
+              "rules": {
+                "color-no-invalid-hex": true,
+                "font-family-no-duplicate-names": true,
+                "function-calc-no-unspaced-operator": true,
+                "unit-no-unknown": true,
+                "property-no-unknown": true,
+                "declaration-block-no-duplicate-properties": true
+              }
+            }' > .stylelintrc.json
+            echo "Created temporary Stylelint config: .stylelintrc.json"
+            echo "CREATED_STYLELINT_CONFIG=true" >> $GITHUB_ENV
+          fi
+
+          # Stylelint ignore 파일 확인
+          if [ -f ".stylelintignore" ]; then
+            echo "Using existing .stylelintignore file from repository root"
+          fi
+        fi
+
+        # Markdownlint 설정 확인 및 설정
+        if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
+          # 사용자가 지정한 경로의 Markdownlint 설정 파일 사용
+          if [ ! -z "${{ inputs.markdownlint_config_path }}" ] && [ -f "${{ inputs.markdownlint_config_path }}" ]; then
+            echo "Using custom Markdownlint config from specified path: ${{ inputs.markdownlint_config_path }}"
+            cp "${{ inputs.markdownlint_config_path }}" .markdownlint.json
+            echo "CREATED_MARKDOWNLINT_CONFIG=true" >> $GITHUB_ENV
+          # 기존 루트 디렉토리 설정 파일 확인
+          elif [ -f ".markdownlint.json" ] || [ -f ".markdownlint.yaml" ] || [ -f ".markdownlint.yml" ] || [ -f ".markdownlintrc" ]; then
+            echo "Using existing Markdownlint config from repository root"
+            echo "CREATED_MARKDOWNLINT_CONFIG=false" >> $GITHUB_ENV
+          # 기본 설정 파일 생성
+          else
+            echo "No Markdownlint config found, creating default configuration"
+            echo '{
+              "default": true,
+              "line-length": false,
+              "no-trailing-punctuation": false,
+              "no-inline-html": false
+            }' > .markdownlint.json
+            echo "Created temporary Markdownlint config: .markdownlint.json"
+            echo "CREATED_MARKDOWNLINT_CONFIG=true" >> $GITHUB_ENV
+          fi
+
+          # Markdownlint ignore 파일 확인
+          if [ -f ".markdownlintignore" ]; then
+            echo "Using existing .markdownlintignore file from repository root"
+          fi
+        fi
+
+        # Misspell ignore 파일 확인
+        if [ "${{ inputs.skip_misspell }}" != "true" ]; then
+          if [ -f ".misspellignore" ]; then
+            echo "Using existing .misspellignore file from repository root"
+          fi
+        fi
+
+        if [ "${{ inputs.debug_mode }}" == "true" ]; then
+          echo "=== CONFIGURATION FILES ==="
+          find . -maxdepth 1 -name "*.eslintrc*" -o -name "*.stylelintrc*" -o -name "*.markdownlint*" -o -name "*.prettierrc*" -o -name "*.eslintignore" -o -name "*.prettierignore" -o -name "*.stylelintignore" -o -name "*.markdownlintignore" -o -name "*.misspellignore"
+        fi
+
+    # 6) 테스트 reviewdog 댓글 기능
+    - name: Test reviewdog comment ability
+      if: inputs.debug_mode == 'true'
+      shell: bash
+      run: |
+        echo "Testing reviewdog's ability to post comments..."
+        echo '{"message":"This is a test message from reviewdog","location":{"path":"test.txt","range":{"start":{"line":1,"column":1}}}}' | reviewdog -f=rdjsonl -reporter="${{ inputs.reporter }}" -level="${{ inputs.level }}" -name="Debug"
+        echo "Test completed - check if a comment was posted"
+
+    # 7) ESLint 검사 - 루트 디렉토리에서 실행
+    - name: Run ESLint
+      if: inputs.skip_eslint != 'true'
+      continue-on-error: false  # 에러가 있어도 계속 진행
+      uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd # v1.33.2
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        level: ${{ inputs.level }}
+        fail_level: none  # 항상 성공적으로 종료
+        filter_mode: ${{ inputs.filter_mode }}
+        eslint_flags: ${{ inputs.eslint_flags }}
+        workdir: "."  # 루트 디렉토리 사용
+        reviewdog_flags: ${{ inputs.reviewdog_flags }}
+        node_options: ${{ inputs.node_options }}
+
+    # 8) Stylelint 검사 - 루트 디렉토리에서 실행
+    - name: Run Stylelint
+      if: inputs.skip_stylelint != 'true'
+      continue-on-error: false  # 에러가 있어도 계속 진행
+      uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411 # v1.30.2
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        level: ${{ inputs.level }}
+        fail_level: none  # 항상 성공적으로 종료
+        filter_mode: ${{ inputs.filter_mode }}
+        stylelint_input: ${{ inputs.stylelint_input }}
+        stylelint_config: ${{ inputs.stylelint_config }}
+        workdir: "."  # 루트 디렉토리 사용
+        packages: ${{ inputs.stylelint_packages }}
+
+    # 9) Markdownlint 검사 - 루트 디렉토리에서 실행
+    - name: Run markdownlint
+      if: inputs.skip_markdownlint != 'true'
+      continue-on-error: false  # 에러가 있어도 계속 진행
+      uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58 # v0.26.2
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        level: ${{ inputs.level }}
+        fail_level: none  # 항상 성공적으로 종료
+        filter_mode: ${{ inputs.filter_mode }}
+        markdownlint_flags: ${{ inputs.markdownlint_flags }}
+
+    # 10) Misspell 검사 - 계속 진행하도록 변경
+    - name: Run misspell
+      if: inputs.skip_misspell != 'true'
+      continue-on-error: false  # 에러가 있어도 계속 진행
+      uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4 # v1.26.3
+      with:
+        github_token: ${{ inputs.github_token }}
+        locale: ${{ inputs.misspell_locale }}
+        level: ${{ inputs.level }}
+        reporter: ${{ inputs.reporter }}
+        ignore: ${{ inputs.misspell_ignore }}
+        path: ${{ inputs.misspell_path }}
+        pattern: ${{ inputs.misspell_pattern }}
+        exclude: ${{ inputs.misspell_exclude }}
+        filter_mode: ${{ inputs.filter_mode }}
+        fail_level: none  # 항상 성공적으로 종료
+
+    # 11) 임시로 생성한 설정 파일 정리 - 루트 디렉토리에서 정리
+    - name: Cleanup temporary config files
+      shell: bash
+      run: |
+        # ESLint 임시 설정 파일 삭제
+        if [ "${{ env.CREATED_ESLINT_CONFIG }}" == "true" ]; then
+          echo "Removing temporary ESLint config"
+          rm -f .eslintrc.json
+        fi
+
+        # Stylelint 임시 설정 파일 삭제
+        if [ "${{ env.CREATED_STYLELINT_CONFIG }}" == "true" ]; then
+          echo "Removing temporary Stylelint config"
+          rm -f .stylelintrc.json
+        fi
+
+        # Markdownlint 임시 설정 파일 삭제
+        if [ "${{ env.CREATED_MARKDOWNLINT_CONFIG }}" == "true" ]; then
+          echo "Removing temporary Markdownlint config"
+          rm -f .markdownlint.json
+        fi
+
+        # Prettier 임시 설정 파일 삭제
+        if [ "${{ env.CREATED_PRETTIER_CONFIG }}" == "true" ]; then
+          echo "Removing temporary Prettier config"
+          rm -f .prettierrc.js
+        fi
+
+    # 12) 로그 요약 출력
+    - name: Error Summary
+      shell: bash
+      run: |
+        echo "=== LINT SUMMARY ==="
+        echo "Linting process completed. Any errors found were reported but did not stop the workflow."
+        echo "Please check the logs above for detailed error messages from each linting tool."
+
+    # 13) 디버그 정보 출력
+    - name: Final Debug Info
+      if: inputs.debug_mode == 'true'
+      shell: bash
+      run: |
+        echo "=== FINAL DEBUG INFO ==="
+        echo "If you're not seeing comments, please check:"
+        echo "1. PR is open and not in draft mode"
+        echo "2. Token has correct permissions (write access to pull requests)"
+        echo "3. Reporter type is correct for your workflow (github-pr-review recommended for PR comments)"
+        echo "4. Filter mode isn't too restrictive (try with 'nofilter' temporarily)"
+        echo "5. There are actual lint issues to report"
+        echo "6. The action is running on files that are part of the PR"
