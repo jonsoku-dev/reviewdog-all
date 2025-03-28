@@ -1,11 +1,12 @@
 const OpenAI = require('openai');
-const { getOctokit, context } = require('@actions/github');
+// const { getOctokit, context } = require('@actions/github');
 const core = require('@actions/core');
+const fs = require('fs');
 
 async function runAICodeReview() {
   try {
     const openaiApiKey = process.env.OPENAI_API_KEY;
-    const githubToken = process.env.GITHUB_TOKEN;
+    // const githubToken = process.env.GITHUB_TOKEN;
     const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
     const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT || '5');
 
@@ -21,35 +22,22 @@ async function runAICodeReview() {
     });
     core.debug('OpenAI 클라이언트 초기화 완료');
 
-    const octokit = getOctokit(githubToken);
+    // const octokit = getOctokit(githubToken);
 
-    // PR의 변경된 파일 가져오기
-    const { data: changedFiles } = await octokit.rest.pulls.listFiles({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.payload.pull_request.number,
-    });
-
-    core.debug(`검토할 파일 수: ${changedFiles.length}`);
+    // 테스트용 임시 코드 (실제 PR 변경 파일 대신 현재 디렉토리의 .js 파일들을 검사)
+    const testFiles = fs.readdirSync('.').filter(file => file.endsWith('.js'));
+    core.debug(`검토할 파일 수: ${testFiles.length}`);
+    
     const reviews = [];
     let totalSuggestions = 0;
 
-    for (const file of changedFiles) {
-      if (file.status === 'removed') continue;
-      
-      core.debug(`파일 분석 시작: ${file.filename}`);
+    for (const file of testFiles) {
+      core.debug(`파일 분석 시작: ${file}`);
 
       try {
-        // GitHub API를 통해 파일 내용 가져오기
-        const { data: fileData } = await octokit.rest.repos.getContent({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          path: file.filename,
-          ref: context.payload.pull_request.head.sha,
-        });
-
-        const fileContent = Buffer.from(fileData.content, 'base64').toString();
-        core.debug(`파일 내용 로드 완료: ${file.filename} (${fileContent.length} 바이트)`);
+        // 파일 내용 읽기
+        const fileContent = fs.readFileSync(file, 'utf8');
+        core.debug(`파일 내용 로드 완료: ${file} (${fileContent.length} 바이트)`);
         
         // AI 리뷰 프롬프트 생성
         const prompt = generateReviewPrompt(fileContent, reviewLevel);
@@ -57,7 +45,7 @@ async function runAICodeReview() {
         
         // OpenAI API 호출 준비
         const requestParams = {
-          model: 'gpt-4o',
+          model: 'gpt-4',
           messages: [
             { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
             { role: 'user', content: prompt }
@@ -85,22 +73,24 @@ async function runAICodeReview() {
         core.debug(`AI 제안 수신 완료 (${suggestionsList.length} 줄)`);
         
         reviews.push({
-          file: file.filename,
+          file: file,
           suggestions: suggestionsList,
         });
         
-        core.debug(`파일 분석 완료: ${file.filename}`);
+        core.debug(`파일 분석 완료: ${file}`);
         
       } catch (fileError) {
-        core.warning(`파일 ${file.filename} 처리 중 오류 발생: ${fileError.message}`);
-        continue; // 다음 파일 처리 계속
+        core.warning(`파일 ${file} 처리 중 오류 발생: ${fileError.message}`);
+        continue;
       }
     }
 
     core.debug(`총 ${reviews.length}개 파일의 리뷰 완료`);
 
-    // 리뷰 결과를 PR 코멘트로 작성
-    await createPRComment(octokit, reviews);
+    // 리뷰 결과를 파일로 저장
+    const reviewResult = formatReviewComment(reviews);
+    fs.writeFileSync('ai-review-result.md', reviewResult);
+    core.debug('리뷰 결과를 ai-review-result.md 파일에 저장했습니다.');
     
     // GitHub Actions outputs 설정
     core.setOutput('ai_review_outcome', 'success');
@@ -139,17 +129,6 @@ function generateReviewPrompt(code, level) {
   };
 
   return `${basePrompt}\n${levelSpecificPrompts[level]}\n\n${code}`;
-}
-
-async function createPRComment(octokit, reviews) {
-  const comment = formatReviewComment(reviews);
-  
-  await octokit.rest.issues.createComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    issue_number: context.payload.pull_request.number,
-    body: comment,
-  });
 }
 
 function formatReviewComment(reviews) {
