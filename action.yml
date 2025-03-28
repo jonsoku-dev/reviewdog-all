@@ -441,7 +441,8 @@ runs:
         AI_REVIEW_OUTCOME: ${{ env.AI_REVIEW_OUTCOME }}
         AI_REVIEW_FAILED: ${{ env.AI_REVIEW_FAILED }}
       run: |
-        node ${{ github.action_path }}/collect-results.js
+        cp ${{ github.action_path }}/collect-results.js ${{github.action_path}}/${{ inputs.workdir }}/collect-results.js
+        node ${{ github.action_path }}/${{ inputs.workdir }}/collect-results.js
 
     # 11. Slack 통지
     - name: Send Slack Notification
