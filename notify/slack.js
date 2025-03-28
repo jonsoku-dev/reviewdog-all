@@ -27,36 +27,33 @@ async function sendSlackNotification() {
   // 린트 결과 파싱
   const results = LINT_RESULTS.split('\n').filter(line => line.trim());
   
-  // 전체 오류/경고 수 계산
-  const totals = results.reduce((acc, line) => {
-    const errorMatch = line.match(/(\d+)\s+errors?/);
-    const warningMatch = line.match(/(\d+)\s+warnings?/);
-    if (errorMatch) acc.errors += parseInt(errorMatch[1]);
-    if (warningMatch) acc.warnings += parseInt(warningMatch[1]);
-    return acc;
-  }, { errors: 0, warnings: 0 });
-
-  // 상태 결정
-  const status = totals.errors > 0 ? 'failure' : totals.warnings > 0 ? 'warning' : 'success';
-  const statusConfig = {
-    success: { emoji: '✅', color: '#36a64f', text: '성공' },
-    warning: { emoji: '⚠️', color: '#ffd700', text: '경고' },
-    failure: { emoji: '🚨', color: '#dc3545', text: '실패' }
-  }[status];
-
-  // 각 린터 결과 파싱
+  // 각 린터의 결과 파싱
   const linterResults = {};
+  let overallStatus = '통과';
+  
   results.forEach(line => {
-    const [linter, counts] = line.split(':');
-    if (counts) {
-      const errorMatch = counts.match(/(\d+)\s+errors?/);
-      const warningMatch = counts.match(/(\d+)\s+warnings?/);
-      linterResults[linter.trim()] = {
-        errors: errorMatch ? parseInt(errorMatch[1]) : 0,
-        warnings: warningMatch ? parseInt(warningMatch[1]) : 0
-      };
+    if (line.includes(':')) {
+      const [linter, result] = line.split(':').map(s => s.trim());
+      if (linter && result) {
+        linterResults[linter] = {
+          status: result.includes('✅') ? 'success' : 
+                 result.includes('❌') ? 'failure' : 
+                 result.includes('⏭️') ? 'skipped' : 'unknown',
+          text: result
+        };
+        
+        // 전체 상태 업데이트
+        if (result.includes('❌')) {
+          overallStatus = '실패';
+        }
+      }
     }
   });
+
+  const statusConfig = {
+    '통과': { emoji: '✅', color: '#36a64f' },
+    '실패': { emoji: '❌', color: '#dc3545' }
+  }[overallStatus];
 
   const message = {
     channel: SLACK_CHANNEL,
@@ -67,7 +64,7 @@ async function sendSlackNotification() {
         type: "header",
         text: {
           type: "plain_text",
-          text: `${statusConfig.emoji} 린트 검사 결과: ${statusConfig.text}`,
+          text: `${statusConfig.emoji} 린트 검사 결과: ${overallStatus}`,
           emoji: true
         }
       },
@@ -121,32 +118,34 @@ async function sendSlackNotification() {
   };
 
   // 각 린터별 결과 추가
-  Object.entries(linterResults).forEach(([linter, counts]) => {
-    const linterEmoji = counts.errors > 0 ? '🔴' : counts.warnings > 0 ? '🟡' : '🟢';
+  Object.entries(linterResults).forEach(([linter, result]) => {
     message.attachments[0].blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `${linterEmoji} *${linter}*\n오류: ${counts.errors} | 경고: ${counts.warnings}`
+        text: `${result.text}`
       }
     });
   });
 
-  // 요약 정보 추가
-  message.attachments[0].blocks.push(
-    {
-      type: "divider"
-    },
-    {
-      type: "context",
-      elements: [
-        {
-          type: "mrkdwn",
-          text: `총계 - 오류: ${totals.errors} | 경고: ${totals.warnings}`
-        }
-      ]
-    }
-  );
+  // 전체 결과 상태 추가
+  const overallResult = results.find(line => line.includes('전체 상태:'));
+  if (overallResult) {
+    message.attachments[0].blocks.push(
+      {
+        type: "divider"
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: overallResult.trim()
+          }
+        ]
+      }
+    );
+  }
 
   const parsedUrl = url.parse(webhookUrl);
   
