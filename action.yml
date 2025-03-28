@@ -124,21 +124,27 @@ runs:
       with:
         reviewdog_version: latest
 
-    # 3. 작업 공간 설정 및 패키지 설치
+    # 3. Node.js 설정
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    # 4. 작업 공간 설정 및 패키지 설치
     - name: Setup workspace
-      shell: node
+      shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
-        const setupWorkspace = require('${{ github.action_path }}/setup-workspace.js');
+        node ${{ github.action_path }}/setup-workspace.js
 
-    # 4. 설정 파일 생성
+    # 5. 설정 파일 생성
     - name: Setup configurations
-      shell: node
+      shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
-        const setupConfigs = require('${{ github.action_path }}/setup-configs.js');
+        node ${{ github.action_path }}/setup-configs.js
 
-    # 5. ESLint (with Prettier) 실행
+    # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
       if: inputs.skip_eslint != 'true'
       uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
@@ -151,7 +157,7 @@ runs:
         eslint_flags: ${{ inputs.eslint_flags }}
         workdir: ${{ inputs.workdir }}
 
-    # 6. Stylelint 실행
+    # 7. Stylelint 실행
     - name: Run Stylelint
       if: inputs.skip_stylelint != 'true'
       uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
@@ -164,7 +170,7 @@ runs:
         stylelint_input: ${{ inputs.stylelint_input }}
         workdir: ${{ inputs.workdir }}
 
-    # 7. Markdownlint 실행
+    # 8. Markdownlint 실행
     - name: Run Markdownlint
       if: inputs.skip_markdownlint != 'true'
       uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
@@ -177,7 +183,7 @@ runs:
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
         workdir: ${{ inputs.workdir }}
 
-    # 8. Misspell 실행
+    # 9. Misspell 실행
     - name: Run Misspell
       if: inputs.skip_misspell != 'true'
       uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
@@ -191,7 +197,7 @@ runs:
         ignore: ${{ inputs.misspell_ignore }}
         workdir: ${{ inputs.workdir }}
 
-    # 9. 정리
+    # 10. 정리
     - name: Cleanup
       if: always()
       shell: bash
