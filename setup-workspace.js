@@ -3,6 +3,51 @@ const path = require('path');
 const { execSync } = require('child_process');
 const os = require('os');
 
+// 의존성 설정 파일 로드
+const dependencies = require('./configs/dependencies.json');
+
+function getDependencies(inputs) {
+  const packages = [];
+  
+  // ESLint 관련 패키지
+  if (inputs.skip_eslint !== 'true') {
+    console.log('\n📦 ESLint 패키지 추가 중...');
+    Object.entries(dependencies.eslint).forEach(([group, deps]) => {
+      console.log(`  [${group}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  // Stylelint 관련 패키지
+  if (inputs.skip_stylelint !== 'true') {
+    console.log('\n📦 Stylelint 패키지 추가 중...');
+    Object.entries(dependencies.stylelint).forEach(([group, deps]) => {
+      console.log(`  [${group}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  // Markdownlint 관련 패키지
+  if (inputs.skip_markdownlint !== 'true') {
+    console.log('\n📦 Markdownlint 패키지 추가 중...');
+    Object.entries(dependencies.markdownlint).forEach(([group, deps]) => {
+      console.log(`  [${group}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  return packages;
+}
+
 function setupWorkspace(inputs) {
   console.log('\n=== 작업 공간 설정 시작 ===');
   
@@ -23,7 +68,10 @@ function setupWorkspace(inputs) {
     name: 'lint-tools',
     version: '1.0.0',
     private: true,
-    type: "module"
+    type: "module",
+    engines: {
+      node: ">=16"
+    }
   };
 
   fs.writeFileSync(
@@ -32,30 +80,8 @@ function setupWorkspace(inputs) {
   );
   console.log('✓ package.json 생성됨');
 
-  // 필요한 패키지 목록
-  const packages = [
-    // ESLint 관련
-    'eslint@^8.0.0',
-    'prettier@latest',
-    'eslint-config-prettier',
-    'eslint-plugin-prettier',
-    '@babel/core',
-    '@babel/eslint-parser',
-    '@babel/preset-env',
-    'eslint-plugin-import',
-    'eslint-plugin-node',
-    
-    // Stylelint 관련
-    'stylelint@latest',
-    'stylelint-config-standard',
-    
-    // Markdownlint 관련
-    'markdownlint-cli@latest'
-  ];
-
-  console.log('\n📦 패키지 설치 준비...');
-  console.log('설치할 패키지 목록:');
-  packages.forEach(pkg => console.log(`  - ${pkg}`));
+  // 필요한 패키지 목록 생성
+  const packages = getDependencies(inputs);
 
   try {
     // 패키지 설치 (프로젝트 루트에 node_modules가 있는 경우 재사용)
@@ -67,10 +93,21 @@ function setupWorkspace(inputs) {
     } else {
       console.log('\n⬇️ 새로운 패키지 설치 중...');
       process.chdir(tempDir);
-      execSync(`npm install --no-package-lock ${packages.join(' ')}`, {
+      
+      // package-lock.json 생성하여 버전 고정
+      const installCmd = `npm install --save-exact ${packages.join(' ')}`;
+      console.log('실행 명령어:', installCmd);
+      
+      execSync(installCmd, {
         stdio: 'inherit'
       });
       console.log('✓ 패키지 설치 완료');
+      
+      // 설치된 버전 확인
+      console.log('\n📋 설치된 패키지 버전 확인:');
+      execSync('npm list --depth=0', {
+        stdio: 'inherit'
+      });
     }
     
     // PATH에 node_modules/.bin 추가
