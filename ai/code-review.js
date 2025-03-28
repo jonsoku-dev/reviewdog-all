@@ -12,6 +12,7 @@ async function runAICodeReview() {
     // OpenAI 클라이언트 초기화 디버깅
     core.debug('OpenAI 클라이언트 초기화 시작...');
     if (!openaiApiKey) {
+      core.setOutput('ai_review_outcome', 'skipped');
       throw new Error('OpenAI API 키가 설정되지 않았습니다.');
     }
     
@@ -31,6 +32,7 @@ async function runAICodeReview() {
 
     core.debug(`검토할 파일 수: ${changedFiles.length}`);
     const reviews = [];
+    let totalSuggestions = 0;
 
     for (const file of changedFiles) {
       if (file.status === 'removed') continue;
@@ -78,11 +80,13 @@ async function runAICodeReview() {
         }
 
         const suggestions = response.choices[0].message.content;
-        core.debug(`AI 제안 수신 완료 (${suggestions.split('\n').length} 줄)`);
+        const suggestionsList = suggestions.split('\n').slice(0, suggestionsLimit);
+        totalSuggestions += suggestionsList.length;
+        core.debug(`AI 제안 수신 완료 (${suggestionsList.length} 줄)`);
         
         reviews.push({
           file: file.filename,
-          suggestions: suggestions.split('\n').slice(0, suggestionsLimit),
+          suggestions: suggestionsList,
         });
         
         core.debug(`파일 분석 완료: ${file.filename}`);
@@ -98,7 +102,14 @@ async function runAICodeReview() {
     // 리뷰 결과를 PR 코멘트로 작성
     await createPRComment(octokit, reviews);
     
-    core.setOutput('review_count', reviews.length);
+    // GitHub Actions outputs 설정
+    core.setOutput('ai_review_outcome', 'success');
+    core.setOutput('ai_review_count', reviews.length);
+    core.setOutput('ai_suggestions_count', totalSuggestions);
+    
+    // GitHub Actions 환경 변수 설정
+    core.exportVariable('AI_REVIEW_OUTCOME', 'success');
+    core.exportVariable('AI_REVIEW_FAILED', 'false');
     
   } catch (error) {
     core.error('상세 에러 정보:');
@@ -107,6 +118,12 @@ async function runAICodeReview() {
       core.error('API 응답 에러:');
       core.error(JSON.stringify(error.response.data, null, 2));
     }
+    
+    // 에러 발생 시 환경 변수 설정
+    core.setOutput('ai_review_outcome', 'failure');
+    core.exportVariable('AI_REVIEW_OUTCOME', 'failure');
+    core.exportVariable('AI_REVIEW_FAILED', 'true');
+    
     core.setFailed(`AI 코드 리뷰 실패: ${error.message}`);
   }
 }
