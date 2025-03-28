@@ -143,16 +143,38 @@ function generateReviewPrompt(code, level) {
 }
 
 function formatReviewComment(reviews) {
-  let comment = '## 🤖 AI 코드 리뷰 결과\n\n';
+  let comment = '## �� AI 코드 리뷰 결과\n\n';
+  let totalIssues = 0;
   
   reviews.forEach(review => {
     comment += `### 📝 ${review.file}\n\n`;
     review.suggestions.forEach((suggestion, index) => {
+      totalIssues++;
       comment += `${index + 1}. ${suggestion}\n`;
-      console.log(`${index + 1}. ${suggestion}`);
     });
     comment += '\n';
   });
+  
+  // 요약 정보 추가
+  comment = `# AI 코드 리뷰 요약\n\n` +
+    `- 검토된 파일: ${reviews.length}개\n` +
+    `- 발견된 이슈: ${totalIssues}개\n\n` +
+    comment;
+  
+  // 결과를 파일로 저장
+  fs.writeFileSync('ai-review-result.md', comment);
+  
+  // 결과를 JSON 형식으로도 저장 (collect-results.js에서 사용)
+  const jsonResult = {
+    files_reviewed: reviews.length,
+    total_issues: totalIssues,
+    reviews: reviews.map(review => ({
+      file: review.file,
+      suggestions_count: review.suggestions.length,
+      suggestions: review.suggestions
+    }))
+  };
+  fs.writeFileSync('ai-review-result.json', JSON.stringify(jsonResult, null, 2));
   
   return comment;
 }

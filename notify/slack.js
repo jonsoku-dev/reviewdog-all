@@ -104,8 +104,19 @@ async function sendSlackNotification() {
     
     if (result.details) {
       // AI 리뷰와 접근성 검사 결과에 대한 특별 처리
-      if (result.name === 'AI 코드 리뷰' && result.status === 'failed') {
-        text += `\n${result.details}`;
+      if (result.name === 'AI 코드 리뷰') {
+        const aiDetails = typeof result.details === 'string' ? result.details : JSON.stringify(result.details);
+        text += `\n*리뷰 결과:*\n${aiDetails}`;
+        
+        // AI 리뷰 파일이 있는 경우 추가
+        if (result.reviewFilePath) {
+          try {
+            const reviewContent = require('fs').readFileSync(result.reviewFilePath, 'utf8');
+            text += `\n\n*상세 리뷰 내용:*\n${reviewContent}`;
+          } catch (error) {
+            console.warn('AI 리뷰 파일을 읽을 수 없습니다:', error);
+          }
+        }
       } else if (result.name === '접근성 검사' && result.status === 'failed') {
         text += `\n${result.details}`;
       } else {
@@ -142,8 +153,23 @@ async function sendSlackNotification() {
         let detailsText = linter.details;
         
         // AI 리뷰와 접근성 검사에 대한 특별 처리
-        if (linter.name === 'AI 코드 리뷰' || linter.name === '접근성 검사') {
+        if (linter.name === 'AI 코드 리뷰') {
+          const aiDetails = typeof linter.details === 'string' ? linter.details : JSON.stringify(linter.details);
+          detailsText = `*리뷰 결과:*\n${aiDetails}`;
+          
+          // AI 리뷰 파일이 있는 경우 추가
+          if (linter.reviewFilePath) {
+            try {
+              const reviewContent = require('fs').readFileSync(linter.reviewFilePath, 'utf8');
+              detailsText += `\n\n*상세 리뷰 내용:*\n${reviewContent}`;
+            } catch (error) {
+              console.warn('AI 리뷰 파일을 읽을 수 없습니다:', error);
+            }
+          }
+        } else if (linter.name === '접근성 검사') {
           detailsText = `${linter.details}`;
+        } else {
+          detailsText = `\`\`\`${linter.details}\`\`\``;
         }
 
         message.attachments[0].blocks.push({

@@ -437,6 +437,9 @@ runs:
         ESLINT_FLAGS: ${{ inputs.eslint_flags }}
         STYLELINT_INPUT: ${{ inputs.stylelint_input }}
         MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
+        AI_REVIEW_RESULT_PATH: "ai-review-result.md"
+        AI_REVIEW_OUTCOME: ${{ env.AI_REVIEW_OUTCOME }}
+        AI_REVIEW_FAILED: ${{ env.AI_REVIEW_FAILED }}
       run: |
         node ${{ github.action_path }}/collect-results.js
 
