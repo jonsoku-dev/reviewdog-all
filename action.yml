@@ -298,6 +298,79 @@ runs:
       shell: bash
       run: |
         {
+          echo "# 린트 검사 결과 요약" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 전체 결과" >> $GITHUB_STEP_SUMMARY
+          
+          # ESLint 결과
+          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
+            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
+              echo "### ESLint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ESLint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              npx eslint ${{ inputs.eslint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ESLint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Stylelint 결과
+          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
+            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
+              echo "### Stylelint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Stylelint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              npx stylelint ${{ inputs.stylelint_input }} --formatter compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### Stylelint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Markdownlint 결과
+          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
+            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
+              echo "### Markdownlint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Markdownlint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              npx markdownlint ${{ inputs.markdownlint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### Markdownlint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Misspell 결과
+          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
+            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
+              echo "### Misspell: ✅ 통과" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Misspell: ❌ 실패" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              misspell . >> $GITHUB_STEP_SUMMARY 2>&1 || true
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### Misspell: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 전체 상태 추가
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 상세 정보" >> $GITHUB_STEP_SUMMARY
+          echo "* 워크플로우 실행: [링크](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "* 커밋: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "* PR: [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})" >> $GITHUB_STEP_SUMMARY
+          fi
+        }
+        
+        # Slack 통지를 위한 환경변수 설정
+        {
           echo "LINT_RESULTS<<EOF"
           echo "린트 검사 결과 요약:"
           echo "-------------------"

@@ -11,8 +11,8 @@ function getDependencies(inputs) {
   // ESLint 관련 패키지
   if (inputs.skip_eslint !== 'true') {
     console.log('\n📦 ESLint 패키지 추가 중...');
-    Object.entries(dependencies.eslint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.eslint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
@@ -23,8 +23,8 @@ function getDependencies(inputs) {
   // Stylelint 관련 패키지
   if (inputs.skip_stylelint !== 'true') {
     console.log('\n📦 Stylelint 패키지 추가 중...');
-    Object.entries(dependencies.stylelint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.stylelint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
@@ -35,8 +35,8 @@ function getDependencies(inputs) {
   // Markdownlint 관련 패키지
   if (inputs.skip_markdownlint !== 'true') {
     console.log('\n📦 Markdownlint 패키지 추가 중...');
-    Object.entries(dependencies.markdownlint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.markdownlint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
@@ -77,8 +77,24 @@ function setupWorkspace(inputs) {
     console.log('\n⬇️ 패키지 설치 중...');
     process.chdir(workdir);
     
-    // package-lock.json 생성하여 버전 고정
-    const installCmd = `npm install --save-exact ${packages.join(' ')}`;
+    // npm cache를 정리하고 패키지 설치
+    console.log('npm cache 정리 중...');
+    execSync('npm cache clean --force', { stdio: 'inherit' });
+    
+    // package-lock.json이 있다면 삭제
+    if (fs.existsSync('package-lock.json')) {
+      console.log('기존 package-lock.json 삭제 중...');
+      fs.unlinkSync('package-lock.json');
+    }
+    
+    // node_modules가 있다면 삭제
+    if (fs.existsSync('node_modules')) {
+      console.log('기존 node_modules 삭제 중...');
+      fs.rmSync('node_modules', { recursive: true, force: true });
+    }
+    
+    // 패키지 설치 (정확한 버전으로)
+    const installCmd = `npm install --no-package-lock --no-save ${packages.join(' ')}`;
     console.log('실행 명령어:', installCmd);
     
     execSync(installCmd, {
