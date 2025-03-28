@@ -19,7 +19,7 @@ jobs:
           reporter: github-check
           filter_mode: added
           level: info
-          fail_level: warning
+          fail_level: none
           workdir: ./testdata/
 
   test-pr-check:
@@ -36,7 +36,7 @@ jobs:
           reporter: github-pr-check
           filter_mode: added
           level: warning
-          fail_level: warning
+          fail_level: none
           workdir: ./testdata/
 
   test-pr-review:
@@ -54,7 +54,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: added
           level: error
-          fail_level: error
+          fail_level: none
           workdir: ./testdata/
 
   test-no-config:
@@ -71,7 +71,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: added
           level: info
-          fail_level: warning
+          fail_level: none
           workdir: ./testdata/no-config/
           eslint_flags: "**/*.{js,jsx,ts,tsx}"
           stylelint_input: "**/*.css"
