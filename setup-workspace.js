@@ -6,7 +6,10 @@ const { execSync } = require('child_process');
 const dependencies = require('./configs/dependencies.json');
 
 function getDependencies(inputs) {
-  const packages = [];
+  const packages = {
+    dependencies: [],
+    devDependencies: []
+  };
   
   // ESLint 관련 패키지
   if (inputs.skip_eslint !== 'true') {
@@ -14,7 +17,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.eslint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -26,7 +29,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.stylelint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -38,7 +41,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.markdownlint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -50,7 +53,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies['ai-review']).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.dependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -62,7 +65,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.accessibility).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.dependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -87,7 +90,9 @@ function setupWorkspace(inputs) {
       type: "module",
       engines: {
         node: ">=16"
-      }
+      },
+      dependencies: {},
+      devDependencies: {}
     };
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
@@ -117,13 +122,20 @@ function setupWorkspace(inputs) {
       fs.rmSync('node_modules', { recursive: true, force: true });
     }
     
-    // 패키지 설치 (정확한 버전으로)
-    const installCmd = `npm install --no-package-lock --no-save ${packages.join(' ')}`;
-    console.log('실행 명령어:', installCmd);
-    
-    execSync(installCmd, {
-      stdio: 'inherit'
-    });
+    // 의존성 패키지 설치
+    if (packages.dependencies.length > 0) {
+      const installDepsCmd = `npm install --save ${packages.dependencies.join(' ')}`;
+      console.log('의존성 패키지 설치 명령어:', installDepsCmd);
+      execSync(installDepsCmd, { stdio: 'inherit' });
+    }
+
+    // 개발 의존성 패키지 설치
+    if (packages.devDependencies.length > 0) {
+      const installDevDepsCmd = `npm install --save-dev ${packages.devDependencies.join(' ')}`;
+      console.log('개발 의존성 패키지 설치 명령어:', installDevDepsCmd);
+      execSync(installDevDepsCmd, { stdio: 'inherit' });
+    }
+
     console.log('✓ 패키지 설치 완료');
     
     // 설치된 버전 확인

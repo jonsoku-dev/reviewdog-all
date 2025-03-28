@@ -264,9 +264,6 @@ runs:
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       run: |
         echo "Current directory:"
-        echo "--------------------------------"
-        ls -R
-        echo "--------------------------------"
         node ${{ github.action_path }}/ai/code-review.js
 
     # 접근성 검사
