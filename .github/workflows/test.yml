@@ -17,7 +17,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
-          filter_mode: file
+          filter_mode: added
           level: info
           fail_level: warning
           workdir: ./testdata/
@@ -34,7 +34,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-check
-          filter_mode: file
+          filter_mode: added
           level: warning
           fail_level: warning
           workdir: ./testdata/
@@ -52,7 +52,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          filter_mode: file
+          filter_mode: added
           level: error
           fail_level: error
           workdir: ./testdata/
