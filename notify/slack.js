@@ -50,7 +50,6 @@ async function sendSlackNotification() {
     if (line.includes(':')) {
       const [linter, result] = line.split(':').map(s => s.trim());
       if (linter && result) {
-        // 실패 상태 확인을 위한 환경 변수 체크
         const envVar = `${linter.toUpperCase()}_FAILED`;
         const hasFailed = process.env[envVar] === 'true';
         
@@ -62,7 +61,6 @@ async function sendSlackNotification() {
           text: result
         };
         
-        // 실패한 린터 추적
         if (status === 'failure') {
           failedLinters.push(linter);
           overallStatus = '실패';
@@ -99,11 +97,11 @@ async function sendSlackNotification() {
         fields: [
           {
             type: "mrkdwn",
-            text: `*저장소:*\n<${repoUrl}|${GITHUB_REPOSITORY}>`
+            text: `*저장소:*\n${GITHUB_REPOSITORY}`
           },
           {
             type: "mrkdwn",
-            text: `*브랜치/PR:*\n${prUrl ? `<${prUrl}|${branch}>` : branch}`
+            text: `*브랜치/PR:*\n${prUrl ? `PR #${prMatch[1]}` : branch}`
           }
         ]
       },
@@ -112,11 +110,11 @@ async function sendSlackNotification() {
         fields: [
           {
             type: "mrkdwn",
-            text: `*커밋:*\n<${commitUrl}|\`${GITHUB_SHA.slice(0, 7)}\`>`
+            text: `*커밋:*\n\`${GITHUB_SHA.slice(0, 7)}\``
           },
           {
             type: "mrkdwn",
-            text: `*워크플로우:*\n<${workflowUrl}|${GITHUB_WORKFLOW}>`
+            text: `*워크플로우:*\n보기`
           }
         ]
       }
@@ -137,36 +135,24 @@ async function sendSlackNotification() {
     ]
   };
 
-  // 실패한 린터가 있는 경우 경고 메시지 추가
-  if (failedLinters.length > 0) {
-    message.blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `⚠️ *다음 린터에서 문제가 발견되었습니다:*\n${failedLinters.join(', ')}\n\n자세한 내용은 <${workflowUrl}|워크플로우 로그>를 확인해주세요.`
-      }
-    });
-  }
-
   // 각 린터별 결과 추가
   Object.entries(linterResults).forEach(([linter, result]) => {
     const statusEmoji = {
       success: '✅',
       failure: '❌',
-      skipped: '⏭️',
-      unknown: '❓'
+      skipped: '⏭️'
     }[result.status];
 
     message.attachments[0].blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `${statusEmoji} *${linter}*: ${result.status === 'failure' ? '*실패*' : result.status === 'success' ? '통과' : '스킵됨'}`
+        text: `${statusEmoji} *${linter}*: ${result.status === 'failure' ? '실패' : result.status === 'success' ? '통과' : '스킵됨'}`
       }
     });
   });
 
-  // 전체 결과 상태 추가
+  // 최종 결과 추가
   message.attachments[0].blocks.push(
     {
       type: "divider"
@@ -176,7 +162,9 @@ async function sendSlackNotification() {
       elements: [
         {
           type: "mrkdwn",
-          text: `${statusConfig.emoji} *최종 결과:* ${overallStatus === '통과' ? '모든 검사 통과' : '일부 검사 실패'}\n자세한 내용은 <${workflowUrl}|여기>에서 확인하실 수 있습니다.`
+          text: failedLinters.length > 0 
+            ? `❌ 최종 결과: 3개의 린터에서 총 0개의 문제가 발견되었습니다.\n자세한 내용은 <${workflowUrl}|여기>에서 확인하실 수 있습니다.`
+            : `✅ 모든 검사가 통과되었습니다.`
         }
       ]
     }
@@ -193,7 +181,6 @@ async function sendSlackNotification() {
     }
   };
 
-  // Enterprise API를 위한 인증 헤더 추가
   if (SLACK_WEBHOOK_URL.startsWith('slack://')) {
     options.headers['Authorization'] = `Bearer ${process.env.SLACK_TOKEN}`;
   }

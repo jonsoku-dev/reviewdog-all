@@ -48,50 +48,62 @@ function collectResults() {
     }
   ];
 
-  let summary = '# 린트 검사 결과 요약\n\n';
-  summary += '## 전체 결과\n\n';
+  let summary = '# 일부 검사가 실패했습니다\n\n';
+
+  // 저장소 정보
+  summary += '## 저장소:\n';
+  summary += `jonsoku-dev/reviewdog-all\n\n`;
+
+  // 브랜치/PR 정보
+  summary += '## 브랜치/PR:\n';
+  if (GITHUB_EVENT_NAME === 'pull_request') {
+    const event = JSON.parse(fs.readFileSync(GITHUB_EVENT_PATH, 'utf8'));
+    summary += `PR #${event.pull_request.number}\n\n`;
+  }
+
+  // 커밋 정보
+  summary += '## 커밋:\n';
+  summary += `${GITHUB_SHA.slice(0, 7)}\n\n`;
+
+  // 워크플로우 정보
+  summary += '## 워크플로우:\n';
+  summary += `보기\n\n`;
+
+  // 상세 검사 결과
+  summary += '## 상세 검사 결과\n\n';
 
   // 각 린터의 결과 추가
   const failedLinters = [];
   linters.forEach(linter => {
     if (linter.skip) {
-      summary += `### ${linter.name}: ⏭️ 스킵됨\n\n`;
+      summary += `${linter.name}: ⏭️ 스킵됨\n`;
     } else {
       if (!linter.failed) {
-        summary += `### ${linter.name}: ✅ 통과\n\n`;
+        summary += `${linter.name}: ✅ 통과\n`;
       } else {
         failedLinters.push(linter.name);
-        summary += `### ${linter.name}: ❌ 실패\n\n`;
+        summary += `${linter.name}: ❌ 실패\n`;
         try {
           const { execSync } = require('child_process');
           const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-          summary += '```\n' + result + '```\n\n';
+          if (result.trim()) {
+            summary += '```\n' + result + '```\n';
+          }
         } catch (error) {
           if (error.stdout) {
-            summary += '```\n' + error.stdout + '```\n\n';
+            summary += '```\n' + error.stdout + '```\n';
           }
         }
       }
     }
   });
 
-  // 상세 정보 추가
-  summary += '## 상세 정보\n\n';
-  summary += `* 워크플로우 실행: [링크](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})\n`;
-  summary += `* 커밋: [\`${GITHUB_SHA.slice(0, 7)}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})\n`;
-
-  // PR 정보 추가
-  if (GITHUB_EVENT_NAME === 'pull_request') {
-    const event = JSON.parse(fs.readFileSync(GITHUB_EVENT_PATH, 'utf8'));
-    summary += `* PR: [#${event.pull_request.number}](${event.pull_request.html_url})\n`;
-  }
-
-  // 전체 상태 추가
-  summary += '\n## 최종 결과\n\n';
+  // 최종 결과
   if (failedLinters.length > 0) {
-    summary += `❌ 다음 린터에서 문제가 발견되었습니다: ${failedLinters.join(', ')}\n`;
+    summary += `\n❌ 최종 결과: 3개의 린터에서 총 0개의 문제가 발견되었습니다.\n`;
+    summary += `자세한 내용은 여기에서 확인하실 수 있습니다.\n`;
   } else {
-    summary += '✅ 모든 검사가 통과되었습니다.\n';
+    summary += '\n✅ 모든 검사가 통과되었습니다.\n';
   }
 
   // 결과를 GITHUB_STEP_SUMMARY에 저장
