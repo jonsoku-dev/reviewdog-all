@@ -30,5 +30,11 @@
     "core": {
       "markdownlint-cli": "^0.37.0"
     }
+  },
+  "notification": {
+    "dependencies": {
+      "nodemailer": "^6.9.9",
+      "axios": "^1.6.7"
+    }
   }
 } 

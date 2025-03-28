@@ -111,6 +111,62 @@ inputs:
     required: false
     default: "false"
 
+  # 통지 설정
+  notification_type:
+    description: "통지 유형 [none,slack,email,both]"
+    required: false
+    default: "none"
+  
+  # Slack 설정
+  slack_webhook_url:
+    description: "Slack Webhook URL (Enterprise 버전: slack://your-enterprise-url)"
+    required: false
+  
+  slack_channel:
+    description: "Slack 채널명 (#으로 시작)"
+    required: false
+  
+  slack_username:
+    description: "Slack 봇 사용자명"
+    required: false
+    default: "Lint Action Bot"
+    
+  slack_icon_emoji:
+    description: "Slack 봇 아이콘 이모지"
+    required: false
+    default: ":lint:"
+  
+  # 이메일 설정
+  email_server_type:
+    description: "이메일 서버 유형 [smtp,enterprise]"
+    required: false
+    default: "smtp"
+    
+  email_host:
+    description: "SMTP 서버 호스트 또는 Enterprise 메일 API 엔드포인트"
+    required: false
+  
+  email_port:
+    description: "SMTP 서버 포트"
+    required: false
+    default: "587"
+    
+  email_username:
+    description: "이메일 계정 사용자명"
+    required: false
+  
+  email_password:
+    description: "이메일 계정 비밀번호 또는 API 키"
+    required: false
+  
+  email_from:
+    description: "발신자 이메일 주소"
+    required: false
+  
+  email_to:
+    description: "수신자 이메일 주소 (콤마로 구분)"
+    required: false
+
 runs:
   using: "composite"
   steps:
@@ -205,3 +261,43 @@ runs:
         ignore: ${{ inputs.misspell_ignore }}
         pattern: "**/*"
         path: ${{ inputs.workdir }}
+
+    # 10. 결과 수집
+    - name: Collect Results
+      shell: bash
+      run: |
+        echo "LINT_RESULTS<<EOF" >> $GITHUB_ENV
+        echo "ESLint: ${{ steps.eslint.outputs.error_count }} errors, ${{ steps.eslint.outputs.warning_count }} warnings" >> $GITHUB_ENV
+        echo "Stylelint: ${{ steps.stylelint.outputs.error_count }} errors, ${{ steps.stylelint.outputs.warning_count }} warnings" >> $GITHUB_ENV
+        echo "Markdownlint: ${{ steps.markdownlint.outputs.error_count }} errors" >> $GITHUB_ENV
+        echo "Misspell: ${{ steps.misspell.outputs.error_count }} errors" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    # 11. Slack 통지
+    - name: Send Slack Notification
+      if: inputs.notification_type == 'slack' || inputs.notification_type == 'both'
+      shell: bash
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+        SLACK_CHANNEL: ${{ inputs.slack_channel }}
+        SLACK_USERNAME: ${{ inputs.slack_username }}
+        SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
+        LINT_RESULTS: ${{ env.LINT_RESULTS }}
+      run: |
+        node ${{ github.action_path }}/notify/slack.js
+
+    # 12. 이메일 통지
+    - name: Send Email Notification
+      if: inputs.notification_type == 'email' || inputs.notification_type == 'both'
+      shell: bash
+      env:
+        EMAIL_SERVER_TYPE: ${{ inputs.email_server_type }}
+        EMAIL_HOST: ${{ inputs.email_host }}
+        EMAIL_PORT: ${{ inputs.email_port }}
+        EMAIL_USERNAME: ${{ inputs.email_username }}
+        EMAIL_PASSWORD: ${{ inputs.email_password }}
+        EMAIL_FROM: ${{ inputs.email_from }}
+        EMAIL_TO: ${{ inputs.email_to }}
+        LINT_RESULTS: ${{ env.LINT_RESULTS }}
+      run: |
+        node ${{ github.action_path }}/notify/email.js
