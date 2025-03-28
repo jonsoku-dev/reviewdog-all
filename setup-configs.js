@@ -1,22 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 
-function ensureDirectoryExists(dirPath) {
+function validateDirectoryExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-    console.log(`디렉토리 생성됨: ${dirPath}`);
+    throw new Error(`디렉토리를 찾을 수 없음: ${dirPath}`);
   }
 }
 
 function copyConfigFiles(workdir, toolName, configPath) {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
   
-  // 작업 디렉토리 생성
-  ensureDirectoryExists(workdir);
+  // 작업 디렉토리 검증
+  validateDirectoryExists(workdir);
   
   // GitHub Actions 환경에서의 configs 디렉토리 경로 설정
   const actionPath = process.env.GITHUB_ACTION_PATH || __dirname;
-  const sourceDir = path.join(actionPath, 'configs', toolName);
+  let sourceDir = path.join(actionPath, 'configs', toolName);
   console.log(`[${toolName}] 액션 경로:`, actionPath);
   console.log(`[${toolName}] 소스 디렉토리 경로:`, sourceDir);
   
