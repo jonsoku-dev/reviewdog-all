@@ -198,6 +198,11 @@ inputs:
     required: false
     default: "AA"
   
+  axe_config_path:
+    description: "axe-core 설정 파일 경로"
+    required: false
+    default: ""
+
   color_contrast_ratio:
     description: "최소 색상 대비 비율"
     required: false

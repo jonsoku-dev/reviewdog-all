@@ -19,6 +19,35 @@ async function runAccessibilityCheck() {
       skipAltTextCheck
     });
 
+    // axe 설정 파일 로드
+    let axeConfig;
+    try {
+      const configPath = path.resolve(process.cwd(), '.axerc.json');
+      console.log('axe 설정 파일 로드:', configPath);
+      axeConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      
+      // 환경 변수에 따라 규칙 비활성화
+      if (skipAriaCheck) {
+        Object.keys(axeConfig.rules).forEach(key => {
+          if (key.startsWith('aria-')) {
+            axeConfig.rules[key].enabled = false;
+          }
+        });
+      }
+      if (skipAltTextCheck) {
+        if (axeConfig.rules['image-alt']) {
+          axeConfig.rules['image-alt'].enabled = false;
+        }
+      }
+      
+      // 접근성 레벨 설정
+      axeConfig.levels = [accessibilityLevel];
+      
+    } catch (error) {
+      console.error('axe 설정 파일 로드 실패:', error);
+      throw new Error('axe 설정 파일을 찾을 수 없습니다. setup-configs.js가 실행되었는지 확인해주세요.');
+    }
+
     // HTML 파일 찾기
     const files = glob.sync('**/*.html', {
       ignore: ['node_modules/**', 'build/**', 'dist/**'],
@@ -84,30 +113,6 @@ async function runAccessibilityCheck() {
       window.HTMLElement.prototype.getBoundingClientRect = () => ({
         top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0
       });
-
-      // axe-core 설정
-      const axeConfig = {
-        rules: [
-          { id: 'color-contrast', enabled: true },
-          ...(skipAriaCheck ? [] : [
-            { id: 'aria-allowed-attr', enabled: true },
-            { id: 'aria-hidden-body', enabled: true },
-            { id: 'aria-hidden-focus', enabled: true },
-            { id: 'aria-input-field-name', enabled: true },
-            { id: 'aria-required-attr', enabled: true },
-            { id: 'aria-required-children', enabled: true },
-            { id: 'aria-required-parent', enabled: true },
-            { id: 'aria-roles', enabled: true },
-            { id: 'aria-valid-attr-value', enabled: true },
-            { id: 'aria-valid-attr', enabled: true }
-          ]),
-          ...(skipAltTextCheck ? [] : [
-            { id: 'image-alt', enabled: true }
-          ])
-        ],
-        resultTypes: ['violations'],
-        levels: [accessibilityLevel],
-      };
 
       try {
         console.log('axe-core 초기화 중...');
