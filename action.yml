@@ -61,6 +61,16 @@ inputs:
     required: false
     default: "false"
 
+  skip_ai_review:
+    description: "AI 코드 리뷰 스킵"
+    required: false
+    default: "false"
+
+  skip_accessibility:
+    description: "접근성 검사 스킵"
+    required: false
+    default: "false"
+
   # ESLint 설정
   eslint_flags:
     description: "ESLint 검사 패턴 (Prettier 포함)"
@@ -168,11 +178,6 @@ inputs:
     required: false
 
   # AI 코드 리뷰 설정
-  enable_ai_review:
-    description: "AI 코드 리뷰 활성화"
-    required: false
-    default: "false"
-  
   openai_api_key:
     description: "OpenAI API 키"
     required: false
@@ -188,11 +193,6 @@ inputs:
     default: "5"
 
   # 접근성 검사 설정
-  enable_accessibility:
-    description: "접근성 검사 활성화"
-    required: false
-    default: "false"
-  
   accessibility_level:
     description: "접근성 검사 레벨 [A,AA,AAA]"
     required: false
@@ -353,7 +353,7 @@ runs:
 
     # AI 코드 리뷰
     - name: Run AI Code Review
-      if: inputs.enable_ai_review == 'true'
+      if: inputs.skip_ai_review != 'true'
       id: ai_review
       shell: bash
       env:
@@ -365,7 +365,7 @@ runs:
 
     # 접근성 검사
     - name: Run Accessibility Check
-      if: inputs.enable_accessibility == 'true'
+      if: inputs.skip_accessibility != 'true'
       id: accessibility
       shell: bash
       env:
@@ -384,11 +384,11 @@ runs:
         SKIP_STYLELINT: ${{ inputs.skip_stylelint }}
         SKIP_MARKDOWNLINT: ${{ inputs.skip_markdownlint }}
         SKIP_MISSPELL: ${{ inputs.skip_misspell }}
+        SKIP_AI_REVIEW: ${{ inputs.skip_ai_review }}
+        SKIP_ACCESSIBILITY: ${{ inputs.skip_accessibility }}
         ESLINT_FLAGS: ${{ inputs.eslint_flags }}
         STYLELINT_INPUT: ${{ inputs.stylelint_input }}
         MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
-        ENABLE_AI_REVIEW: ${{ inputs.enable_ai_review }}
-        ENABLE_ACCESSIBILITY: ${{ inputs.enable_accessibility }}
       run: |
         node ${{ github.action_path }}/collect-results.js
 

@@ -44,6 +44,30 @@ function getDependencies(inputs) {
     });
   }
 
+  // AI 코드 리뷰 관련 패키지
+  if (inputs.skip_ai_review !== 'true') {
+    console.log('\n📦 AI 코드 리뷰 패키지 추가 중...');
+    Object.entries(dependencies['ai-review']).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  // 접근성 검사 관련 패키지
+  if (inputs.skip_accessibility !== 'true') {
+    console.log('\n📦 접근성 검사 패키지 추가 중...');
+    Object.entries(dependencies.accessibility).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
   return packages;
 }
 
@@ -130,7 +154,9 @@ console.log('\n=== 설정값 ===');
 const inputs = {
   skip_eslint: process.env.INPUT_SKIP_ESLINT,
   skip_stylelint: process.env.INPUT_SKIP_STYLELINT,
-  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT
+  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT,
+  skip_ai_review: process.env.INPUT_SKIP_AI_REVIEW,
+  skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY
 };
 
 Object.entries(inputs).forEach(([key, value]) => {
