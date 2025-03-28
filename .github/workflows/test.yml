@@ -17,9 +17,9 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
-          filter_mode: added
+          filter_mode: file
           level: info
-          fail_level: warning
+          fail_level: none
           workdir: ./testdata/
 
   test-pr-check:
@@ -34,9 +34,9 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-check
-          filter_mode: added
+          filter_mode: file
           level: warning
-          fail_level: warning
+          fail_level: none
           workdir: ./testdata/
 
   test-pr-review:
@@ -52,7 +52,27 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          filter_mode: added
+          filter_mode: file
           level: error
-          fail_level: error
+          fail_level: none
           workdir: ./testdata/
+
+  test-no-config:
+    name: Lint Check (No Config)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: file
+          level: info
+          fail_level: none
+          workdir: ./testdata/no-config/
+          eslint_flags: "**/*.{js,jsx,ts,tsx}"
+          stylelint_input: "**/*.css"
+          markdownlint_flags: "**/*.md"

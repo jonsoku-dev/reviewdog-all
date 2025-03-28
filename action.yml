@@ -150,6 +150,8 @@ runs:
       working-directory: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/setup-configs.js
+        # 설정 파일들을 작업 디렉토리로 복사
+        cp -r ${{ env.TEMP_DIR }}/.* ${{ inputs.workdir }}/ 2>/dev/null || true
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
@@ -176,6 +178,7 @@ runs:
         fail_level: ${{ inputs.fail_level }}
         stylelint_input: ${{ inputs.stylelint_input }}
         packages: 'stylelint-config-standard'
+        workdir: ${{ inputs.workdir }}
 
     # 8. Markdownlint 실행
     - name: Run Markdownlint
@@ -188,6 +191,7 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
+        workdir: ${{ inputs.workdir }}
 
     # 9. Misspell 실행
     - name: Run Misspell

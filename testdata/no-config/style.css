@@ -1,0 +1,13 @@
+body {
+  color: #FFF
+  font-size: 16px
+}
+h1 {
+  orientation: landscape
+  color: #ff0000;
+  /* 아래 세미콜론 누락 */
+  text-transform: uppercase
+
+  /* 아래 속성 누락 */
+  font- size: 24px
+}
