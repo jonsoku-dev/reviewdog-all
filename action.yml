@@ -318,3 +318,16 @@ runs:
         MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
       run: |
         node ${{ github.action_path }}/collect-results.js
+
+    # 11. Slack 통지
+    - name: Send Slack Notification
+      if: inputs.notification_type == 'slack' || inputs.notification_type == 'both'
+      shell: bash
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+        SLACK_CHANNEL: ${{ inputs.slack_channel }}
+        SLACK_USERNAME: ${{ inputs.slack_username }}
+        SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
+        SLACK_TOKEN: ${{ inputs.slack_token }}
+      run: |
+        node ${{ github.action_path }}/notify/slack.js

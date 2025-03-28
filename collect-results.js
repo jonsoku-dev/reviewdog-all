@@ -48,85 +48,104 @@ function collectResults() {
     }
   ];
 
-  let summary = '# 일부 검사가 실패했습니다\n\n';
+  // 실패한 린터 수집
+  const failedLinters = linters.filter(linter => !linter.skip && linter.failed);
+  const hasFailures = failedLinters.length > 0;
 
-  // 저장소 정보
-  summary += '## 저장소:\n';
-  summary += `jonsoku-dev/reviewdog-all\n\n`;
+  // 헤더 생성
+  let summary = hasFailures ? '# ❌ 일부 검사가 실패했습니다\n\n' : '# ✅ 모든 검사가 통과되었습니다\n\n';
 
-  // 브랜치/PR 정보
-  summary += '## 브랜치/PR:\n';
+  // 메타 정보 테이블 생성
+  summary += '| 항목 | 내용 |\n';
+  summary += '|------|------|\n';
+  summary += `| 저장소 | \`${GITHUB_REPOSITORY}\` |\n`;
+  
+  // PR 또는 브랜치 정보
   if (GITHUB_EVENT_NAME === 'pull_request') {
     const event = JSON.parse(fs.readFileSync(GITHUB_EVENT_PATH, 'utf8'));
-    summary += `PR #${event.pull_request.number}\n\n`;
+    summary += `| PR | #${event.pull_request.number} |\n`;
   }
-
-  // 커밋 정보
-  summary += '## 커밋:\n';
-  summary += `${GITHUB_SHA.slice(0, 7)}\n\n`;
-
-  // 워크플로우 정보
-  summary += '## 워크플로우:\n';
-  summary += `보기\n\n`;
+  
+  summary += `| 커밋 | \`${GITHUB_SHA.slice(0, 7)}\` |\n`;
+  summary += `| 워크플로우 | [보기](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |\n\n`;
 
   // 상세 검사 결과
   summary += '## 상세 검사 결과\n\n';
 
+  // 린터 결과를 테이블로 표시
+  summary += '| 린터 | 상태 | 상세 |\n';
+  summary += '|------|------|------|\n';
+
   // 각 린터의 결과 추가
-  const failedLinters = [];
   linters.forEach(linter => {
+    let status, statusEmoji;
     if (linter.skip) {
-      summary += `${linter.name}: ⏭️ 스킵됨\n`;
+      status = '스킵됨';
+      statusEmoji = '⏭️';
+    } else if (!linter.failed) {
+      status = '통과';
+      statusEmoji = '✅';
     } else {
-      if (!linter.failed) {
-        summary += `${linter.name}: ✅ 통과\n`;
-      } else {
-        failedLinters.push(linter.name);
-        summary += `${linter.name}: ❌ 실패\n`;
-        try {
-          const { execSync } = require('child_process');
-          const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-          if (result.trim()) {
-            summary += '```\n' + result + '```\n';
-          }
-        } catch (error) {
-          if (error.stdout) {
-            summary += '```\n' + error.stdout + '```\n';
-          }
+      status = '실패';
+      statusEmoji = '❌';
+    }
+
+    let details = '';
+    if (linter.failed) {
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        if (result.trim()) {
+          details = result.split('\n')[0]; // 첫 번째 오류만 표시
+        }
+      } catch (error) {
+        if (error.stdout) {
+          details = error.stdout.split('\n')[0]; // 첫 번째 오류만 표시
         }
       }
     }
+
+    summary += `| ${linter.name} | ${statusEmoji} ${status} | ${details ? `\`${details}\`` : '-'} |\n`;
   });
 
+  summary += '\n';
+
   // 최종 결과
-  if (failedLinters.length > 0) {
-    summary += `\n❌ 최종 결과: 3개의 린터에서 총 0개의 문제가 발견되었습니다.\n`;
-    summary += `자세한 내용은 여기에서 확인하실 수 있습니다.\n`;
-  } else {
-    summary += '\n✅ 모든 검사가 통과되었습니다.\n';
+  if (hasFailures) {
+    summary += '## ❌ 최종 결과\n\n';
+    summary += '다음 린터에서 문제가 발견되었습니다:\n\n';
+    failedLinters.forEach(linter => {
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        if (result.trim()) {
+          summary += `### ${linter.name}\n\n\`\`\`\n${result}\n\`\`\`\n\n`;
+        }
+      } catch (error) {
+        if (error.stdout) {
+          summary += `### ${linter.name}\n\n\`\`\`\n${error.stdout}\n\`\`\`\n\n`;
+        }
+      }
+    });
   }
 
   // 결과를 GITHUB_STEP_SUMMARY에 저장
   fs.writeFileSync(GITHUB_STEP_SUMMARY, summary);
 
   // Slack 통지를 위한 환경 변수 설정
-  const lintResults = [
-    '린트 검사 결과 요약:',
-    '-------------------'
-  ];
+  const lintResults = {
+    status: hasFailures ? 'failed' : 'success',
+    repository: GITHUB_REPOSITORY,
+    commit: GITHUB_SHA.slice(0, 7),
+    workflow_url: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`,
+    results: linters.map(linter => ({
+      name: linter.name,
+      status: linter.skip ? 'skipped' : linter.failed ? 'failed' : 'success'
+    })),
+    failed_linters: failedLinters.map(linter => linter.name)
+  };
 
-  linters.forEach(linter => {
-    if (linter.skip) {
-      lintResults.push(`${linter.name}: ⏭️ 스킵됨`);
-    } else {
-      lintResults.push(`${linter.name}: ${!linter.failed ? '✅ 통과' : '❌ 실패'}`);
-    }
-  });
-
-  lintResults.push('-------------------');
-  lintResults.push(failedLinters.length > 0 ? '전체 상태: ❌ 일부 검사 실패' : '전체 상태: ✅ 모든 검사 통과');
-
-  fs.writeFileSync(process.env.GITHUB_ENV, `LINT_RESULTS<<EOF\n${lintResults.join('\n')}\nEOF\n`, { flag: 'a' });
+  fs.writeFileSync(process.env.GITHUB_ENV, `LINT_RESULTS<<EOF\n${JSON.stringify(lintResults)}\nEOF\n`, { flag: 'a' });
 }
 
 // 스크립트 실행
