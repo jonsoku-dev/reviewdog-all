@@ -245,7 +245,6 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
-        path: ${{ inputs.workdir }}
 
     # 9. Misspell 실행
     - name: Run Misspell
