@@ -65,7 +65,13 @@ async function runAccessibilityCheck() {
         virtualConsole,
         url: `file://${path.resolve(file)}`,
         contentType: 'text/html',
-        includeNodeLocations: true
+        includeNodeLocations: true,
+        beforeParse(window) {
+          // 리소스 요청 중단 메서드 추가
+          window._resourceLoader = {
+            abort: () => {}
+          };
+        }
       });
 
       const window = dom.window;
@@ -81,11 +87,24 @@ async function runAccessibilityCheck() {
 
       // axe-core 설정
       const axeConfig = {
-        rules: {
-          'color-contrast': { enabled: true, options: { noScroll: true } },
-          'aria-*': { enabled: !skipAriaCheck },
-          'image-alt': { enabled: !skipAltTextCheck },
-        },
+        rules: [
+          { id: 'color-contrast', enabled: true },
+          ...(skipAriaCheck ? [] : [
+            { id: 'aria-allowed-attr', enabled: true },
+            { id: 'aria-hidden-body', enabled: true },
+            { id: 'aria-hidden-focus', enabled: true },
+            { id: 'aria-input-field-name', enabled: true },
+            { id: 'aria-required-attr', enabled: true },
+            { id: 'aria-required-children', enabled: true },
+            { id: 'aria-required-parent', enabled: true },
+            { id: 'aria-roles', enabled: true },
+            { id: 'aria-valid-attr-value', enabled: true },
+            { id: 'aria-valid-attr', enabled: true }
+          ]),
+          ...(skipAltTextCheck ? [] : [
+            { id: 'image-alt', enabled: true }
+          ])
+        ],
         resultTypes: ['violations'],
         levels: [accessibilityLevel],
       };
@@ -120,8 +139,15 @@ async function runAccessibilityCheck() {
       } catch (error) {
         console.error(`${file} 파일 검사 중 오류 발생:`, error);
       } finally {
-        // 메모리 정리
-        window.close();
+        // 리소스 정리
+        try {
+          if (window._resourceLoader) {
+            window._resourceLoader.abort();
+          }
+          window.close();
+        } catch (error) {
+          console.warn('창 닫기 중 오류 발생:', error);
+        }
       }
     }
 
