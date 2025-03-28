@@ -141,7 +141,7 @@ runs:
     # 5. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
       if: inputs.skip_eslint != 'true'
-      uses: reviewdog/action-eslint@v1
+      uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -154,7 +154,7 @@ runs:
     # 6. Stylelint 실행
     - name: Run Stylelint
       if: inputs.skip_stylelint != 'true'
-      uses: reviewdog/action-stylelint@v1
+      uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -167,7 +167,7 @@ runs:
     # 7. Markdownlint 실행
     - name: Run Markdownlint
       if: inputs.skip_markdownlint != 'true'
-      uses: reviewdog/action-markdownlint@v1
+      uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -180,7 +180,7 @@ runs:
     # 8. Misspell 실행
     - name: Run Misspell
       if: inputs.skip_misspell != 'true'
-      uses: reviewdog/action-misspell@v1
+      uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
