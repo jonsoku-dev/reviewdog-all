@@ -262,20 +262,22 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
+      working-directory: ${{ inputs.workdir }}
       run: |
         echo "=== AI 코드 리뷰 디버그 정보 ==="
         echo "현재 디렉토리: $(pwd)"
         echo "node 버전: $(node -v)"
         echo "npm 버전: $(npm -v)"
         echo "node_modules 위치:"
-        ls -la node_modules
-        echo "node_modules/.bin 내용:"
-        ls -la node_modules/.bin
+        ls -la node_modules || echo "node_modules not found"
+        echo "상위 디렉토리의 node_modules 위치:"
+        ls -la ../node_modules || echo "node_modules not found in parent directory"
         echo "package.json 내용:"
-        cat package.json
+        cat package.json || echo "package.json not found"
         echo "=== 모듈 경로 확인 ==="
         node -e "console.log('Module paths:', module.paths)"
         echo "=== AI 코드 리뷰 실행 ==="
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
         node ${{ github.action_path }}/ai/code-review.js
 
     # 접근성 검사
@@ -288,22 +290,27 @@ runs:
         COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
         SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
         SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
+      working-directory: ${{ inputs.workdir }}
       run: |
         echo "=== 접근성 검사 디버그 정보 ==="
         echo "현재 디렉토리: $(pwd)"
-        echo "node_modules 위치:"
-        ls -la node_modules
+        echo "상위 디렉토리: $(cd .. && pwd)"
+        echo "node_modules 위치 확인:"
+        ls -la node_modules || echo "node_modules not found in current directory"
+        ls -la ../node_modules || echo "node_modules not found in parent directory"
         echo "jsdom 모듈 확인:"
-        find node_modules -name "jsdom" -type d
+        find . -name "jsdom" -type d || echo "jsdom not found in current directory"
+        find .. -name "jsdom" -type d || echo "jsdom not found in parent directory"
         echo "package.json 내용:"
-        cat package.json
+        cat package.json || echo "package.json not found"
         echo "NODE_PATH 환경변수:"
         echo $NODE_PATH
         echo "=== 모듈 해석 테스트 ==="
-        node -e "try { require.resolve('jsdom'); console.log('jsdom 모듈 찾음!'); } catch(e) { console.log('jsdom 모듈을 찾을 수 없음:', e.message); }"
+        # NODE_PATH를 현재 디렉토리와 상위 디렉토리의 node_modules를 포함하도록 설정
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
+        node -e "try { require.resolve('jsdom'); console.log('jsdom 모듈 찾음:', require.resolve('jsdom')); } catch(e) { console.log('jsdom 모듈을 찾을 수 없음:', e.message); }"
         echo "=== 접근성 검사 실행 ==="
-        # 전체 경로를 사용하여 node_modules 지정
-        NODE_PATH=$(pwd)/node_modules node ${{ github.action_path }}/accessibility/check.js
+        node ${{ github.action_path }}/accessibility/check.js
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
