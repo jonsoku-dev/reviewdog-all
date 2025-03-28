@@ -159,8 +159,8 @@ runs:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
         filter_mode: ${{ inputs.filter_mode }}
-        fail_on_error: ${{ inputs.fail_level != 'none' }}
         level: ${{ inputs.level }}
+        fail_level: ${{ inputs.fail_level }}
         eslint_flags: ${{ inputs.eslint_flags }}
         workdir: ${{ inputs.workdir }}
 
@@ -172,8 +172,8 @@ runs:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
         filter_mode: ${{ inputs.filter_mode }}
-        fail_on_error: ${{ inputs.fail_level != 'none' }}
         level: ${{ inputs.level }}
+        fail_level: ${{ inputs.fail_level }}
         stylelint_input: ${{ inputs.stylelint_input }}
         workdir: ${{ inputs.workdir }}
 
@@ -185,8 +185,8 @@ runs:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
         filter_mode: ${{ inputs.filter_mode }}
-        fail_on_error: ${{ inputs.fail_level != 'none' }}
         level: ${{ inputs.level }}
+        fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
         workdir: ${{ inputs.workdir }}
 
@@ -198,8 +198,8 @@ runs:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
         filter_mode: ${{ inputs.filter_mode }}
-        fail_on_error: ${{ inputs.fail_level != 'none' }}
         level: ${{ inputs.level }}
+        fail_level: ${{ inputs.fail_level }}
         locale: ${{ inputs.misspell_locale }}
         ignore: ${{ inputs.misspell_ignore }}
         workdir: ${{ inputs.workdir }}

@@ -9,16 +9,16 @@ jobs:
     name: Run Unified Lint
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
         with:
           node-version: "20"
       - name: Unified Lint
@@ -26,9 +26,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
-          fail_level: warning
           filter_mode: file
           level: info
+          fail_level: warning
           # 필요없는 린팅 도구는 스킵 가능
           skip_eslint: false
           skip_stylelint: false

@@ -9,26 +9,34 @@ jobs:
   test-check:
     name: Lint Check (github-check)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
+          filter_mode: file
           level: info
+          fail_level: warning
           workdir: ./testdata/
 
   test-pr-check:
     if: github.event_name == 'pull_request'
     name: Lint Check (github-pr-check)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-check
+          filter_mode: file
           level: warning
+          fail_level: warning
           workdir: ./testdata/
 
   test-pr-review:
@@ -36,6 +44,7 @@ jobs:
     name: Lint Check (github-pr-review)
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -43,7 +52,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          level: error
           filter_mode: file
+          level: error
           fail_level: error
           workdir: ./testdata/
