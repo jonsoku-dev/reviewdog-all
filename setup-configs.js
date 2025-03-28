@@ -1,17 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-function validateDirectoryExists(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    throw new Error(`디렉토리를 찾을 수 없음: ${dirPath}`);
-  }
-}
-
-function copyConfigFiles(workdir, toolName, configPath) {
+function copyConfigFiles(toolName, configPath) {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
-  
-  // 작업 디렉토리 검증
-  validateDirectoryExists(workdir);
   
   // GitHub Actions 환경에서의 configs 디렉토리 경로 설정
   const actionPath = process.env.GITHUB_ACTION_PATH || __dirname;
@@ -39,7 +30,7 @@ function copyConfigFiles(workdir, toolName, configPath) {
     
     files.forEach(file => {
       const sourcePath = path.join(sourceDir, file);
-      const targetPath = path.join(workdir, file);
+      const targetPath = path.join(process.cwd(), file);
       
       try {
         if (configPath && file.endsWith('.json')) {
@@ -71,41 +62,41 @@ function copyConfigFiles(workdir, toolName, configPath) {
   }
 }
 
-function createConfig(workdir, inputs) {
+function createConfig(inputs) {
   console.log('\n=== 설정 파일 생성 시작 ===');
-  console.log('작업 디렉토리:', workdir);
+  console.log('현재 작업 디렉토리:', process.cwd());
   
   try {
     // ESLint 설정 (with Prettier)
     if (inputs.skip_eslint !== 'true') {
-      copyConfigFiles(workdir, 'eslint', inputs.eslint_config_path);
+      copyConfigFiles('eslint', inputs.eslint_config_path);
     } else {
       console.log('\n[eslint] 건너뛰기');
     }
 
     // Stylelint 설정
     if (inputs.skip_stylelint !== 'true') {
-      copyConfigFiles(workdir, 'stylelint', inputs.stylelint_config_path);
+      copyConfigFiles('stylelint', inputs.stylelint_config_path);
     } else {
       console.log('\n[stylelint] 건너뛰기');
     }
 
     // Markdownlint 설정
     if (inputs.skip_markdownlint !== 'true') {
-      copyConfigFiles(workdir, 'markdownlint', inputs.markdownlint_config_path);
+      copyConfigFiles('markdownlint', inputs.markdownlint_config_path);
     } else {
       console.log('\n[markdownlint] 건너뛰기');
     }
 
     // Axe 설정
     if (inputs.skip_accessibility !== 'true') {
-      copyConfigFiles(workdir, 'axe', inputs.axe_config_path);
+      copyConfigFiles('axe', inputs.axe_config_path);
     } else {
       console.log('\n[axe] 건너뛰기');
     }
 
     console.log('\n✅ 모든 설정 파일 생성 완료');
-    console.log('작업 디렉토리:', workdir);
+    console.log('현재 작업 디렉토리:', process.cwd());
   } catch (err) {
     console.error('\n❌ 설정 파일 생성 중 오류 발생:', err.message);
     process.exit(1);
@@ -122,8 +113,7 @@ const inputs = {
   eslint_config_path: process.env.INPUT_ESLINT_CONFIG_PATH,
   stylelint_config_path: process.env.INPUT_STYLELINT_CONFIG_PATH,
   markdownlint_config_path: process.env.INPUT_MARKDOWNLINT_CONFIG_PATH,
-  axe_config_path: process.env.INPUT_AXE_CONFIG_PATH,
-  workdir: process.env.INPUT_WORKDIR || '.'
+  axe_config_path: process.env.INPUT_AXE_CONFIG_PATH
 };
 
 console.log('환경변수 디버그 정보:');
@@ -138,6 +128,5 @@ Object.entries(inputs).forEach(([key, value]) => {
   console.log(`${key}: ${value}`);
 });
 
-
 // 설정 파일 생성
-createConfig(inputs.workdir, inputs);
+createConfig(inputs);

@@ -271,7 +271,6 @@ runs:
         INPUT_STYLELINT_CONFIG_PATH: ${{ inputs.stylelint_config_path }}
         INPUT_MARKDOWNLINT_CONFIG_PATH: ${{ inputs.markdownlint_config_path }}
         INPUT_AXE_CONFIG_PATH: ${{ inputs.axe_config_path }}
-        INPUT_WORKDIR: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/setup-configs.js
 
