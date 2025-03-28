@@ -139,3 +139,6 @@ jobs:
           color_contrast_ratio: 4.5
           skip_aria_check: false
           skip_alt_text_check: false
+          # AI 리뷰 추가 옵션
+          ai_review_level: detailed  # 더 상세한 리뷰를 위해 'detailed' 설정
+          ai_suggestions_limit: 10   # 더 많은 제안을 받기 위해 기본값 5에서 10으로 증가
