@@ -28,7 +28,7 @@ inputs:
   filter_mode:
     description: "reviewdog 필터 모드 [added,diff_context,file,nofilter]"
     required: false
-    default: "file"
+    default: "added"
 
   level:
     description: "리포트 레벨 [info,warning,error]"

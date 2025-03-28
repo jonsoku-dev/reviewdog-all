@@ -27,6 +27,9 @@ jobs:
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
+    permissions: # PR에 코멘트를 달기 위한 권한
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: jonsoku-dev/unified-lint-action@v1
@@ -44,47 +47,16 @@ jobs:
 | `github_token` | GitHub 토큰 | ✅ | `${{ github.token }}` |
 | `workdir` | 작업 디렉토리 | ❌ | `.` |
 | `reporter` | reviewdog 리포터 | ❌ | `github-pr-review` |
-| `filter_mode` | reviewdog 필터 모드 | ❌ | `file` |
+| `filter_mode` | reviewdog 필터 모드 (`added`: 변경된 라인만, `diff_context`: 변경된 라인과 주변 컨텍스트, `file`: 수정된 파일 전체, `nofilter`: 모든 파일) | ❌ | `added` |
 | `level` | 리포트 레벨 | ❌ | `info` |
 | `fail_level` | 실패 레벨 | ❌ | `warning` |
 
-### 린트 도구 활성화/비활성화
+### 권한 설정
 
-| 매개변수 | 설명 | 기본값 |
-|----------|------|---------|
-| `skip_eslint` | ESLint 스킵 | `false` |
-| `skip_stylelint` | Stylelint 스킵 | `false` |
-| `skip_markdownlint` | Markdownlint 스킵 | `false` |
-| `skip_misspell` | Misspell 스킵 | `false` |
+액션이 PR에 코멘트를 달기 위해서는 다음 권한이 필요합니다:
 
-### ESLint 설정
-
-| 매개변수 | 설명 | 기본값 |
-|----------|------|---------|
-| `eslint_flags` | ESLint 검사 패턴 | `**/*.{js,jsx,ts,tsx}` |
-| `eslint_config_path` | ESLint 설정 파일 경로 | - |
-
-### Stylelint 설정
-
-| 매개변수 | 설명 | 기본값 |
-|----------|------|---------|
-| `stylelint_input` | Stylelint 검사 패턴 | `**/*.css` |
-| `stylelint_config_path` | Stylelint 설정 파일 경로 | - |
-
-### Markdownlint 설정
-
-| 매개변수 | 설명 | 기본값 |
-|----------|------|---------|
-| `markdownlint_flags` | Markdownlint 검사 패턴 | `**/*.md` |
-| `markdownlint_config_path` | Markdownlint 설정 파일 경로 | - |
-
-### Misspell 설정
-
-| 매개변수 | 설명 | 기본값 |
-|----------|------|---------|
-| `misspell_locale` | Misspell 로케일 | `US` |
-| `misspell_ignore` | Misspell 무시할 단어 목록 | - |
-
-## 라이선스
-
-MIT License - 자세한 내용은 [LICENSE](./LICENSE) 파일을 참조하세요. 
+```yaml
+permissions:
+  contents: read      # 코드를 읽기 위한 권한
+  pull-requests: write # PR에 코멘트를 달기 위한 권한
+```

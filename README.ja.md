@@ -27,6 +27,9 @@ jobs:
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
+    permissions: # PRにコメントするために必要な権限
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: jonsoku-dev/unified-lint-action@v1
@@ -44,47 +47,16 @@ jobs:
 | `github_token` | GitHubトークン | ✅ | `${{ github.token }}` |
 | `workdir` | 作業ディレクトリ | ❌ | `.` |
 | `reporter` | reviewdogレポーター | ❌ | `github-pr-review` |
-| `filter_mode` | reviewdogフィルターモード | ❌ | `file` |
+| `filter_mode` | reviewdogフィルターモード (`added`: 変更された行のみ, `diff_context`: 変更された行とその周辺, `file`: 修正されたファイル全体, `nofilter`: すべてのファイル) | ❌ | `added` |
 | `level` | レポートレベル | ❌ | `info` |
 | `fail_level` | 失敗レベル | ❌ | `warning` |
 
-### リントツールの有効化/無効化
+### 権限設定
 
-| パラメータ | 説明 | デフォルト値 |
-|------------|------|--------------|
-| `skip_eslint` | ESLintをスキップ | `false` |
-| `skip_stylelint` | Stylelintをスキップ | `false` |
-| `skip_markdownlint` | Markdownlintをスキップ | `false` |
-| `skip_misspell` | Misspellをスキップ | `false` |
+アクションがPRにコメントするには以下の権限が必要です：
 
-### ESLint設定
-
-| パラメータ | 説明 | デフォルト値 |
-|------------|------|--------------|
-| `eslint_flags` | ESLintチェックパターン | `**/*.{js,jsx,ts,tsx}` |
-| `eslint_config_path` | ESLint設定ファイルパス | - |
-
-### Stylelint設定
-
-| パラメータ | 説明 | デフォルト値 |
-|------------|------|--------------|
-| `stylelint_input` | Stylelintチェックパターン | `**/*.css` |
-| `stylelint_config_path` | Stylelint設定ファイルパス | - |
-
-### Markdownlint設定
-
-| パラメータ | 説明 | デフォルト値 |
-|------------|------|--------------|
-| `markdownlint_flags` | Markdownlintチェックパターン | `**/*.md` |
-| `markdownlint_config_path` | Markdownlint設定ファイルパス | - |
-
-### Misspell設定
-
-| パラメータ | 説明 | デフォルト値 |
-|------------|------|--------------|
-| `misspell_locale` | Misspellロケール | `US` |
-| `misspell_ignore` | Misspellで無視する単語リスト | - |
-
-## ライセンス
-
-MIT License - 詳細は[LICENSE](./LICENSE)ファイルをご覧ください。 
+```yaml
+permissions:
+  contents: read      # コードを読み取るための権限
+  pull-requests: write # PRにコメントするための権限
+```

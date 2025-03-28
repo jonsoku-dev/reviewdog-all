@@ -22,12 +22,12 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         id: bumpr
         uses: haya14busa/action-bumpr@78ab5a104d20896c9c9122c64221b3aecf1a8cbb # v1.10.0
         with:
-          default_bump_level: patch
           tag_name: v%s
+          default_bump_level: patch
 
       - name: Update Semver
         if: ${{ steps.bumpr.outputs.skip != 'true' }}
@@ -51,11 +51,14 @@ jobs:
         run: |
           gh release create "${TAG_NAME}" \
             --title "Release ${TAG_NAME/refs\/tags\//}" \
-            --generate-notes
+            --generate-notes \
+            --draft=false
 
   release-check:
     if: github.event.action == 'labeled'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Post bumpr status comment

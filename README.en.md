@@ -27,6 +27,9 @@ jobs:
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
+    permissions: # Required permissions for PR comments
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: jonsoku-dev/unified-lint-action@v1
@@ -44,47 +47,16 @@ jobs:
 | `github_token` | GitHub Token | ✅ | `${{ github.token }}` |
 | `workdir` | Working Directory | ❌ | `.` |
 | `reporter` | Reviewdog Reporter | ❌ | `github-pr-review` |
-| `filter_mode` | Reviewdog Filter Mode | ❌ | `file` |
+| `filter_mode` | Reviewdog Filter Mode (`added`: only changed lines, `diff_context`: changed lines and context, `file`: whole modified files, `nofilter`: all files) | ❌ | `added` |
 | `level` | Report Level | ❌ | `info` |
 | `fail_level` | Failure Level | ❌ | `warning` |
 
-### Lint Tools Enable/Disable
+### Permissions Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `skip_eslint` | Skip ESLint | `false` |
-| `skip_stylelint` | Skip Stylelint | `false` |
-| `skip_markdownlint` | Skip Markdownlint | `false` |
-| `skip_misspell` | Skip Misspell | `false` |
+The action requires the following permissions to comment on PRs:
 
-### ESLint Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `eslint_flags` | ESLint Check Pattern | `**/*.{js,jsx,ts,tsx}` |
-| `eslint_config_path` | ESLint Config File Path | - |
-
-### Stylelint Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `stylelint_input` | Stylelint Check Pattern | `**/*.css` |
-| `stylelint_config_path` | Stylelint Config File Path | - |
-
-### Markdownlint Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `markdownlint_flags` | Markdownlint Check Pattern | `**/*.md` |
-| `markdownlint_config_path` | Markdownlint Config File Path | - |
-
-### Misspell Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `misspell_locale` | Misspell Locale | `US` |
-| `misspell_ignore` | Words to Ignore in Misspell | - |
-
-## License
-
-MIT License - see [LICENSE](./LICENSE) for details. 
+```yaml
+permissions:
+  contents: read      # Permission to read code
+  pull-requests: write # Permission to comment on PRs
+```
