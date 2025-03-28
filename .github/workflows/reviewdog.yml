@@ -1,0 +1,39 @@
+name: Reviewdog
+on: [pull_request]
+
+jobs:
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Test Action (github-pr-check)
+        uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-check
+          level: warning
+
+      - name: Test Action (github-check)
+        uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-check
+          level: warning
+
+      - name: Test Action (github-pr-review)
+        uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          level: warning 
