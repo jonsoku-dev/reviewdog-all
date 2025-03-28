@@ -209,8 +209,10 @@ runs:
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
+      id: eslint
       if: inputs.skip_eslint != 'true'
       uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -220,10 +222,18 @@ runs:
         eslint_flags: ${{ inputs.eslint_flags }}
         workdir: ${{ inputs.workdir }}
 
+    - name: Record ESLint Result
+      if: inputs.skip_eslint != 'true'
+      shell: bash
+      run: |
+        echo "ESLINT_OUTCOME=${{ steps.eslint.outcome }}" >> $GITHUB_ENV
+
     # 7. Stylelint 실행
     - name: Run Stylelint
+      id: stylelint
       if: inputs.skip_stylelint != 'true'
       uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -234,10 +244,18 @@ runs:
         packages: 'stylelint-config-standard'
         workdir: ${{ inputs.workdir }}
 
+    - name: Record Stylelint Result
+      if: inputs.skip_stylelint != 'true'
+      shell: bash
+      run: |
+        echo "STYLELINT_OUTCOME=${{ steps.stylelint.outcome }}" >> $GITHUB_ENV
+
     # 8. Markdownlint 실행
     - name: Run Markdownlint
+      id: markdownlint
       if: inputs.skip_markdownlint != 'true'
       uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -246,10 +264,18 @@ runs:
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
 
+    - name: Record Markdownlint Result
+      if: inputs.skip_markdownlint != 'true'
+      shell: bash
+      run: |
+        echo "MARKDOWNLINT_OUTCOME=${{ steps.markdownlint.outcome }}" >> $GITHUB_ENV
+
     # 9. Misspell 실행
     - name: Run Misspell
+      id: misspell
       if: inputs.skip_misspell != 'true'
       uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -261,16 +287,78 @@ runs:
         pattern: "**/*"
         path: ${{ inputs.workdir }}
 
+    - name: Record Misspell Result
+      if: inputs.skip_misspell != 'true'
+      shell: bash
+      run: |
+        echo "MISSPELL_OUTCOME=${{ steps.misspell.outcome }}" >> $GITHUB_ENV
+
     # 10. 결과 수집
     - name: Collect Results
       shell: bash
       run: |
-        echo "LINT_RESULTS<<EOF" >> $GITHUB_ENV
-        echo "ESLint: ${{ steps.eslint.outputs.error_count }} errors, ${{ steps.eslint.outputs.warning_count }} warnings" >> $GITHUB_ENV
-        echo "Stylelint: ${{ steps.stylelint.outputs.error_count }} errors, ${{ steps.stylelint.outputs.warning_count }} warnings" >> $GITHUB_ENV
-        echo "Markdownlint: ${{ steps.markdownlint.outputs.error_count }} errors" >> $GITHUB_ENV
-        echo "Misspell: ${{ steps.misspell.outputs.error_count }} errors" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        {
+          echo "LINT_RESULTS<<EOF"
+          echo "린트 검사 결과 요약:"
+          echo "-------------------"
+          
+          # ESLint 결과
+          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
+            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
+              echo "ESLint: ✅ 통과"
+            else
+              echo "ESLint: ❌ 실패"
+            fi
+          else
+            echo "ESLint: ⏭️ 스킵됨"
+          fi
+          
+          # Stylelint 결과
+          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
+            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
+              echo "Stylelint: ✅ 통과"
+            else
+              echo "Stylelint: ❌ 실패"
+            fi
+          else
+            echo "Stylelint: ⏭️ 스킵됨"
+          fi
+          
+          # Markdownlint 결과
+          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
+            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
+              echo "Markdownlint: ✅ 통과"
+            else
+              echo "Markdownlint: ❌ 실패"
+            fi
+          else
+            echo "Markdownlint: ⏭️ 스킵됨"
+          fi
+          
+          # Misspell 결과
+          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
+            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
+              echo "Misspell: ✅ 통과"
+            else
+              echo "Misspell: ❌ 실패"
+            fi
+          else
+            echo "Misspell: ⏭️ 스킵됨"
+          fi
+          
+          # 전체 결과 상태
+          echo "-------------------"
+          if [ "${{ env.ESLINT_OUTCOME }}" == "success" ] && \
+             [ "${{ env.STYLELINT_OUTCOME }}" == "success" ] && \
+             [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ] && \
+             [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
+            echo "전체 상태: ✅ 모든 검사 통과"
+          else
+            echo "전체 상태: ❌ 일부 검사 실패"
+          fi
+          
+          echo "EOF"
+        } >> $GITHUB_ENV
 
     # 11. Slack 통지
     - name: Send Slack Notification
