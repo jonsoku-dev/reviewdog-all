@@ -36,8 +36,27 @@ async function sendSlackNotification() {
     return acc;
   }, { errors: 0, warnings: 0 });
 
-  // 상태 이모지 결정
-  const statusEmoji = totals.errors > 0 ? '🚨' : totals.warnings > 0 ? '⚠️' : '✅';
+  // 상태 결정
+  const status = totals.errors > 0 ? 'failure' : totals.warnings > 0 ? 'warning' : 'success';
+  const statusConfig = {
+    success: { emoji: '✅', color: '#36a64f', text: '성공' },
+    warning: { emoji: '⚠️', color: '#ffd700', text: '경고' },
+    failure: { emoji: '🚨', color: '#dc3545', text: '실패' }
+  }[status];
+
+  // 각 린터 결과 파싱
+  const linterResults = {};
+  results.forEach(line => {
+    const [linter, counts] = line.split(':');
+    if (counts) {
+      const errorMatch = counts.match(/(\d+)\s+errors?/);
+      const warningMatch = counts.match(/(\d+)\s+warnings?/);
+      linterResults[linter.trim()] = {
+        errors: errorMatch ? parseInt(errorMatch[1]) : 0,
+        warnings: warningMatch ? parseInt(warningMatch[1]) : 0
+      };
+    }
+  });
 
   const message = {
     channel: SLACK_CHANNEL,
@@ -48,20 +67,23 @@ async function sendSlackNotification() {
         type: "header",
         text: {
           type: "plain_text",
-          text: `${statusEmoji} 린트 검사 결과`,
+          text: `${statusConfig.emoji} 린트 검사 결과: ${statusConfig.text}`,
           emoji: true
         }
       },
       {
+        type: "divider"
+      },
+      {
         type: "section",
         fields: [
           {
             type: "mrkdwn",
-            text: `*저장소:*\n${GITHUB_REPOSITORY}`
+            text: `*저장소:*\n<https://github.com/${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}>`
           },
           {
             type: "mrkdwn",
-            text: `*브랜치:*\n${GITHUB_REF}`
+            text: `*브랜치:*\n${GITHUB_REF.replace('refs/heads/', '')}`
           }
         ]
       },
@@ -70,32 +92,61 @@ async function sendSlackNotification() {
         fields: [
           {
             type: "mrkdwn",
-            text: `*총 오류:*\n${totals.errors}`
+            text: `*커밋:*\n<https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}|\`${GITHUB_SHA.slice(0, 7)}\`>`
           },
           {
             type: "mrkdwn",
-            text: `*총 경고:*\n${totals.warnings}`
+            text: `*워크플로우:*\n<https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|${GITHUB_WORKFLOW}>`
           }
         ]
       },
       {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: "```" + results.join('\n') + "```"
-        }
-      },
+        type: "divider"
+      }
+    ],
+    attachments: [
       {
-        type: "context",
-        elements: [
+        color: statusConfig.color,
+        blocks: [
           {
-            type: "mrkdwn",
-            text: `커밋: \`${GITHUB_SHA.slice(0, 7)}\` | <https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|워크플로우 실행 보기>`
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "*상세 검사 결과*"
+            }
           }
         ]
       }
     ]
   };
+
+  // 각 린터별 결과 추가
+  Object.entries(linterResults).forEach(([linter, counts]) => {
+    const linterEmoji = counts.errors > 0 ? '🔴' : counts.warnings > 0 ? '🟡' : '🟢';
+    message.attachments[0].blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `${linterEmoji} *${linter}*\n오류: ${counts.errors} | 경고: ${counts.warnings}`
+      }
+    });
+  });
+
+  // 요약 정보 추가
+  message.attachments[0].blocks.push(
+    {
+      type: "divider"
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `총계 - 오류: ${totals.errors} | 경고: ${totals.warnings}`
+        }
+      ]
+    }
+  );
 
   const parsedUrl = url.parse(webhookUrl);
   
