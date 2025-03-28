@@ -163,15 +163,23 @@ function setupWorkspace(inputs) {
 // GitHub Actions 입력 값 가져오기 및 로깅
 console.log('\n=== 설정값 ===');
 const inputs = {
-  skip_eslint: process.env.INPUT_SKIP_ESLINT,
-  skip_stylelint: process.env.INPUT_SKIP_STYLELINT,
-  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT,
-  skip_ai_review: process.env.INPUT_SKIP_AI_REVIEW,
-  skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY
+  skip_eslint: process.env.INPUT_SKIP_ESLINT || 'false',
+  skip_stylelint: process.env.INPUT_SKIP_STYLELINT || 'false',
+  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT || 'false',
+  skip_ai_review: process.env.INPUT_SKIP_AI_REVIEW || 'false',
+  skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY || 'false'
 };
 
+console.log('환경변수 디버그 정보:');
+Object.keys(process.env).forEach(key => {
+  if (key.startsWith('INPUT_')) {
+    console.log(`${key}:`, process.env[key]);
+  }
+});
+
+console.log('\n설정된 입력값:');
 Object.entries(inputs).forEach(([key, value]) => {
-  console.log(`${key}:`, value || '(기본값 사용)');
+  console.log(`${key}: ${value}`);
 });
 
 // 작업 공간 설정 실행

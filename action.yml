@@ -248,6 +248,12 @@ runs:
     - name: Setup workspace
       shell: bash
       working-directory: ${{ inputs.workdir }}
+      env:
+        INPUT_SKIP_ESLINT: ${{ inputs.skip_eslint }}
+        INPUT_SKIP_STYLELINT: ${{ inputs.skip_stylelint }}
+        INPUT_SKIP_MARKDOWNLINT: ${{ inputs.skip_markdownlint }}
+        INPUT_SKIP_AI_REVIEW: ${{ inputs.skip_ai_review }}
+        INPUT_SKIP_ACCESSIBILITY: ${{ inputs.skip_accessibility }}
       run: |
         node ${{ github.action_path }}/setup-workspace.js
 

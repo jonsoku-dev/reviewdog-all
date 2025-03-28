@@ -5,6 +5,19 @@ const fs = require('fs');
 
 async function runAICodeReview() {
   try {
+    // 환경변수 디버깅
+    console.log('=== 환경변수 디버깅 ===');
+    console.log('OPENAI_API_KEY 존재여부:', !!process.env.OPENAI_API_KEY);
+    console.log('AI_REVIEW_LEVEL:', process.env.AI_REVIEW_LEVEL);
+    console.log('AI_SUGGESTIONS_LIMIT:', process.env.AI_SUGGESTIONS_LIMIT);
+    console.log('NODE_PATH:', process.env.NODE_PATH);
+    
+    // 전체 환경변수 목록 (값은 보안상 제외)
+    console.log('\n=== 사용 가능한 환경변수 키 목록 ===');
+    Object.keys(process.env).forEach(key => {
+      console.log(key);
+    });
+
     const openaiApiKey = process.env.OPENAI_API_KEY;
     // const githubToken = process.env.GITHUB_TOKEN;
     const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
