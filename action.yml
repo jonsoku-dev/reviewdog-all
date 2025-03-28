@@ -1,0 +1,202 @@
+name: "Unified Lint Action"
+description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell)"
+author: "Jonsoku"
+
+inputs:
+  workdir:
+    description: "작업 디렉토리 경로"
+    required: false
+    default: "."
+
+  github_token:
+    description: "GitHub Token"
+    required: true
+    default: ${{ github.token }}
+
+  reporter:
+    description: "reviewdog 리포터 [github-pr-check,github-check,github-pr-review]"
+    required: false
+    default: "github-pr-review"
+
+  filter_mode:
+    description: "reviewdog 필터 모드 [added,diff_context,file,nofilter]"
+    required: false
+    default: "file"
+
+  level:
+    description: "리포트 레벨 [info,warning,error]"
+    required: false
+    default: "info"
+
+  fail_level:
+    description: "실패 레벨 [none,any,info,warning,error]"
+    required: false
+    default: "warning"
+
+  # 린트 도구 활성화/비활성화
+  skip_eslint:
+    description: "ESLint (with Prettier) 스킵"
+    required: false
+    default: "false"
+
+  skip_stylelint:
+    description: "Stylelint 스킵"
+    required: false
+    default: "false"
+
+  skip_markdownlint:
+    description: "Markdownlint 스킵"
+    required: false
+    default: "false"
+
+  skip_misspell:
+    description: "Misspell 스킵"
+    required: false
+    default: "false"
+
+  # ESLint 설정
+  eslint_flags:
+    description: "ESLint 검사 패턴 (Prettier 포함)"
+    required: false
+    default: "**/*.{js,jsx,ts,tsx}"
+
+  eslint_config_path:
+    description: "ESLint 설정 파일 경로"
+    required: false
+    default: ""
+
+  # Stylelint 설정
+  stylelint_input:
+    description: "Stylelint 검사 패턴"
+    required: false
+    default: "**/*.css"
+
+  stylelint_config_path:
+    description: "Stylelint 설정 파일 경로"
+    required: false
+    default: ""
+
+  # Markdownlint 설정
+  markdownlint_flags:
+    description: "Markdownlint 검사 패턴"
+    required: false
+    default: "**/*.md"
+
+  markdownlint_config_path:
+    description: "Markdownlint 설정 파일 경로"
+    required: false
+    default: ""
+
+  # Misspell 설정
+  misspell_locale:
+    description: "Misspell 로케일 (US/UK)"
+    required: false
+    default: "US"
+
+  misspell_ignore:
+    description: "Misspell 무시할 단어 목록 (콤마로 구분)"
+    required: false
+    default: ""
+
+  # 디버그 모드
+  debug_mode:
+    description: "디버그 모드 활성화"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    # 1. 환경 설정
+    - name: Setup environment
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        echo "REVIEWDOG_GITHUB_API_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+        if [ "${{ inputs.debug_mode }}" == "true" ]; then
+          echo "Debug mode enabled"
+          set -x
+        fi
+
+    # 2. reviewdog 설치
+    - name: Setup reviewdog
+      uses: reviewdog/action-setup@v1
+      with:
+        reviewdog_version: latest
+
+    # 3. 작업 공간 설정 및 패키지 설치
+    - name: Setup workspace
+      shell: node
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        const setupWorkspace = require('${{ github.action_path }}/setup-workspace.js');
+
+    # 4. 설정 파일 생성
+    - name: Setup configurations
+      shell: node
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        const setupConfigs = require('${{ github.action_path }}/setup-configs.js');
+
+    # 5. ESLint (with Prettier) 실행
+    - name: Run ESLint with Prettier
+      if: inputs.skip_eslint != 'true'
+      uses: reviewdog/action-eslint@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        filter_mode: ${{ inputs.filter_mode }}
+        fail_on_error: ${{ inputs.fail_level != 'none' }}
+        level: ${{ inputs.level }}
+        eslint_flags: ${{ inputs.eslint_flags }}
+        workdir: ${{ inputs.workdir }}
+
+    # 6. Stylelint 실행
+    - name: Run Stylelint
+      if: inputs.skip_stylelint != 'true'
+      uses: reviewdog/action-stylelint@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        filter_mode: ${{ inputs.filter_mode }}
+        fail_on_error: ${{ inputs.fail_level != 'none' }}
+        level: ${{ inputs.level }}
+        stylelint_input: ${{ inputs.stylelint_input }}
+        workdir: ${{ inputs.workdir }}
+
+    # 7. Markdownlint 실행
+    - name: Run Markdownlint
+      if: inputs.skip_markdownlint != 'true'
+      uses: reviewdog/action-markdownlint@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        filter_mode: ${{ inputs.filter_mode }}
+        fail_on_error: ${{ inputs.fail_level != 'none' }}
+        level: ${{ inputs.level }}
+        markdownlint_flags: ${{ inputs.markdownlint_flags }}
+        workdir: ${{ inputs.workdir }}
+
+    # 8. Misspell 실행
+    - name: Run Misspell
+      if: inputs.skip_misspell != 'true'
+      uses: reviewdog/action-misspell@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: ${{ inputs.reporter }}
+        filter_mode: ${{ inputs.filter_mode }}
+        fail_on_error: ${{ inputs.fail_level != 'none' }}
+        level: ${{ inputs.level }}
+        locale: ${{ inputs.misspell_locale }}
+        ignore: ${{ inputs.misspell_ignore }}
+        workdir: ${{ inputs.workdir }}
+
+    # 9. 정리
+    - name: Cleanup
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        if [ ! -z "${TEMP_DIR}" ]; then
+          rm -rf ${TEMP_DIR}
+        fi

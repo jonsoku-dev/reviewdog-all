@@ -7,8 +7,7 @@ on:
 jobs:
   lint:
     name: Run Unified Lint
-    runs-on:
-      - runner-small
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
@@ -26,22 +25,19 @@ jobs:
         uses: ./.github/actions/unified-lint-action
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review  # 이미 적절히 설정됨
+          reporter: github-pr-review
           fail_level: warning
-          filter_mode: added
-          level: info  # warning에서 변경 (더 많은 이슈 표시)
+          filter_mode: file
+          level: info
           # 필요없는 린팅 도구는 스킵 가능
           skip_eslint: false
           skip_stylelint: false
           skip_markdownlint: false
-          skip_prettier: false
           skip_misspell: false
-          # ESLint 설정
+          # ESLint (with Prettier) 설정
           eslint_flags: "**/*.{js,jsx,ts,tsx}"
           # Stylelint 설정
           stylelint_input: "**/*.css"
-          # Prettier 설정
-          prettier_flags: "**/*.{js,jsx,ts,tsx,css,md,json,html}"
           # Misspell 설정
           misspell_locale: "US"
           # debug mode
