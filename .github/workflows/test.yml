@@ -110,42 +110,18 @@ jobs:
           skip_aria_check: false
           skip_alt_text_check: false
 
-  test-ai-review:
-    name: AI 코드 리뷰 테스트
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2  
-      - uses: ./
-        with:
-          github_token: ${{ secrets.github_token }}
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          ai_review_level: basic
-          ai_suggestions_limit: 5
-          reporter: github-pr-review
-          filter_mode: nofilter
-          level: warning
-          fail_level: warning
-          workdir: ./testdata/
-          skip_ai_review: false
-          skip_accessibility: true
-          skip_eslint: true
-          skip_stylelint: true
-          skip_markdownlint: true
-          skip_misspell: true
-
-          
   test-slack-notification:
     name: Slack 통지 테스트
     runs-on: ubuntu-latest
     permissions:
+      pull-requests: write
       contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           reporter: github-check
           filter_mode: nofilter
           level: warning
