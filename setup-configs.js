@@ -1,9 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 
+function ensureDirectoryExists(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    console.log(`디렉토리 생성됨: ${dirPath}`);
+  }
+}
+
 function copyConfigFiles(workdir, toolName, configPath) {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
+  
+  // 작업 디렉토리 생성
+  ensureDirectoryExists(workdir);
+  
+  // configs 디렉토리 경로 확인
   const sourceDir = path.join(__dirname, 'configs', toolName);
+  console.log(`[${toolName}] 소스 디렉토리 경로:`, sourceDir);
+  
+  if (!fs.existsSync(sourceDir)) {
+    console.error(`[${toolName}] 소스 디렉토리가 존재하지 않습니다:`, sourceDir);
+    throw new Error(`소스 디렉토리를 찾을 수 없음: ${sourceDir}`);
+  }
   
   try {
     const files = fs.readdirSync(sourceDir);
@@ -17,10 +35,16 @@ function copyConfigFiles(workdir, toolName, configPath) {
         if (configPath && file.endsWith('.json')) {
           // 사용자 정의 설정 파일이 있는 경우
           console.log(`[${toolName}] 사용자 정의 설정 파일 사용:`, configPath);
+          if (!fs.existsSync(configPath)) {
+            throw new Error(`사용자 정의 설정 파일을 찾을 수 없음: ${configPath}`);
+          }
           fs.copyFileSync(configPath, targetPath);
         } else {
           // 기본 설정 파일 복사
           console.log(`[${toolName}] 기본 설정 파일 복사:`, file);
+          if (!fs.existsSync(sourcePath)) {
+            throw new Error(`소스 파일을 찾을 수 없음: ${sourcePath}`);
+          }
           fs.copyFileSync(sourcePath, targetPath);
         }
         console.log(`[${toolName}] ✓ ${file} 복사 완료`);
