@@ -288,7 +288,8 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        node ${{ github.action_path }}/code-review.js
+        cp ${{ github.action_path }}/code-review.js ${{github.action_path}}/${{ inputs.workdir }}/code-review.js
+        node ${{ github.action_path }}/${{ inputs.workdir }}/code-review.js
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true'
@@ -313,7 +314,8 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        node ${{ github.action_path }}/check.js
+        cp ${{ github.action_path }}/check.js ${{github.action_path}}/${{ inputs.workdir }}/check.js
+        node ${{ github.action_path }}/${{ inputs.workdir }}/check.js
 
     - name: Record Accessibility Result
       if: inputs.skip_accessibility != 'true'
