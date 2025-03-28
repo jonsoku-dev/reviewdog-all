@@ -11,6 +11,16 @@ function getDependencies(inputs) {
     devDependencies: []
   };
   
+  // 기본 의존성 패키지
+  console.log('\n📦 기본 의존성 패키지 추가 중...');
+  Object.entries(dependencies.base).forEach(([category, deps]) => {
+    console.log(`  [${category}]`);
+    Object.entries(deps).forEach(([pkg, version]) => {
+      packages.dependencies.push(`${pkg}@${version}`);
+      console.log(`    - ${pkg}@${version}`);
+    });
+  });
+
   // ESLint 관련 패키지
   if (inputs.skip_eslint !== 'true') {
     console.log('\n📦 ESLint 패키지 추가 중...');
