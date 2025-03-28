@@ -455,4 +455,5 @@ runs:
         SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
         SLACK_TOKEN: ${{ inputs.slack_token }}
       run: |
-        node ${{ github.action_path }}/notify/slack.js
+        cp ${{ github.action_path }}/notify/slack.js ${{github.action_path}}/${{ inputs.workdir }}/notify/slack.js
+        node ${{ github.action_path }}/${{ inputs.workdir }}/notify/slack.js
