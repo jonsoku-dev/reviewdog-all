@@ -1,6 +1,14 @@
+# 액션 메타데이터
 name: "Unified Lint Action"
 description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell)"
 author: "Jonsoku"
+
+# 액션 버전 관리 (수정하지 마세요!)
+env:
+  REVIEWDOG_ESLINT_VERSION: "2fee6dd72a5419ff4113f694e2068d2a03bb35dd"    # ESLint 액션 버전
+  REVIEWDOG_STYLELINT_VERSION: "dd2b435cc6a7c82705307a9dee740c9bbaa10411"  # Stylelint 액션 버전
+  REVIEWDOG_MARKDOWNLINT_VERSION: "3667398db9118d7e78f7a63d10e26ce454ba5f58" # Markdownlint 액션 버전
+  REVIEWDOG_MISSPELL_VERSION: "9daa94af4357dddb6fd3775de806bc0a8e98d3e4"   # Misspell 액션 버전
 
 inputs:
   workdir:
@@ -147,7 +155,7 @@ runs:
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
       if: inputs.skip_eslint != 'true'
-      uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
+      uses: reviewdog/action-eslint@${{ env.REVIEWDOG_ESLINT_VERSION }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -160,7 +168,7 @@ runs:
     # 7. Stylelint 실행
     - name: Run Stylelint
       if: inputs.skip_stylelint != 'true'
-      uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
+      uses: reviewdog/action-stylelint@${{ env.REVIEWDOG_STYLELINT_VERSION }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -173,7 +181,7 @@ runs:
     # 8. Markdownlint 실행
     - name: Run Markdownlint
       if: inputs.skip_markdownlint != 'true'
-      uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
+      uses: reviewdog/action-markdownlint@${{ env.REVIEWDOG_MARKDOWNLINT_VERSION }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -186,7 +194,7 @@ runs:
     # 9. Misspell 실행
     - name: Run Misspell
       if: inputs.skip_misspell != 'true'
-      uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
+      uses: reviewdog/action-misspell@${{ env.REVIEWDOG_MISSPELL_VERSION }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
