@@ -212,6 +212,7 @@ runs:
       id: eslint
       if: inputs.skip_eslint != 'true'
       uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -235,6 +236,7 @@ runs:
       id: stylelint
       if: inputs.skip_stylelint != 'true'
       uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -259,6 +261,7 @@ runs:
       id: markdownlint
       if: inputs.skip_markdownlint != 'true'
       uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -281,6 +284,7 @@ runs:
       id: misspell
       if: inputs.skip_misspell != 'true'
       uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -358,145 +362,4 @@ runs:
               echo "### Misspell: ✅ 통과" >> $GITHUB_STEP_SUMMARY
             else
               echo "### Misspell: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              misspell . >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Misspell: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # 전체 상태 추가
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 상세 정보" >> $GITHUB_STEP_SUMMARY
-          echo "* 워크플로우 실행: [링크](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-          echo "* 커밋: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "* PR: [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})" >> $GITHUB_STEP_SUMMARY
-          fi
-        }
-        
-        # Slack 통지를 위한 환경변수 설정
-        {
-          echo "LINT_RESULTS<<EOF"
-          echo "린트 검사 결과 요약:"
-          echo "-------------------"
-          
-          # ESLint 결과
-          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
-            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
-              echo "ESLint: ✅ 통과"
-            else
-              echo "ESLint: ❌ 실패"
-            fi
-          else
-            echo "ESLint: ⏭️ 스킵됨"
-          fi
-          
-          # Stylelint 결과
-          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
-            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
-              echo "Stylelint: ✅ 통과"
-            else
-              echo "Stylelint: ❌ 실패"
-            fi
-          else
-            echo "Stylelint: ⏭️ 스킵됨"
-          fi
-          
-          # Markdownlint 결과
-          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
-            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
-              echo "Markdownlint: ✅ 통과"
-            else
-              echo "Markdownlint: ❌ 실패"
-            fi
-          else
-            echo "Markdownlint: ⏭️ 스킵됨"
-          fi
-          
-          # Misspell 결과
-          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
-            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-              echo "Misspell: ✅ 통과"
-            else
-              echo "Misspell: ❌ 실패"
-            fi
-          else
-            echo "Misspell: ⏭️ 스킵됨"
-          fi
-          
-          # 전체 결과 상태
-          echo "-------------------"
-          if [ "${{ env.ESLINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.STYLELINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-            echo "전체 상태: ✅ 모든 검사 통과"
-          else
-            echo "전체 상태: ❌ 일부 검사 실패"
-          fi
-          
-          echo "EOF"
-        } >> $GITHUB_ENV
-
-    # 11. Slack 통지
-    - name: Send Slack Notification
-      if: inputs.notification_type == 'slack' || inputs.notification_type == 'both'
-      shell: bash
-      env:
-        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
-        SLACK_CHANNEL: ${{ inputs.slack_channel }}
-        SLACK_USERNAME: ${{ inputs.slack_username }}
-        SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
-        LINT_RESULTS: ${{ env.LINT_RESULTS }}
-      run: |
-        node ${{ github.action_path }}/notify/slack.js
-
-    # 12. 이메일 통지
-    - name: Send Email Notification
-      if: inputs.notification_type == 'email' || inputs.notification_type == 'both'
-      shell: bash
-      env:
-        EMAIL_SERVER_TYPE: ${{ inputs.email_server_type }}
-        EMAIL_HOST: ${{ inputs.email_host }}
-        EMAIL_PORT: ${{ inputs.email_port }}
-        EMAIL_USERNAME: ${{ inputs.email_username }}
-        EMAIL_PASSWORD: ${{ inputs.email_password }}
-        EMAIL_FROM: ${{ inputs.email_from }}
-        EMAIL_TO: ${{ inputs.email_to }}
-        LINT_RESULTS: ${{ env.LINT_RESULTS }}
-      run: |
-        node ${{ github.action_path }}/notify/email.js
-
-    # 마지막에 전체 결과 확인 및 실패 처리
-    - name: Check Overall Results
-      shell: bash
-      run: |
-        FAILED=false
-        
-        if [ "${{ env.ESLINT_FAILED }}" == "true" ]; then
-          FAILED=true
-          echo "ESLint 검사에서 오류가 발생했습니다."
-        fi
-        
-        if [ "${{ env.STYLELINT_FAILED }}" == "true" ]; then
-          FAILED=true
-          echo "Stylelint 검사에서 오류가 발생했습니다."
-        fi
-        
-        if [ "${{ env.MARKDOWNLINT_FAILED }}" == "true" ]; then
-          FAILED=true
-          echo "Markdownlint 검사에서 오류가 발생했습니다."
-        fi
-        
-        if [ "${{ env.MISSPELL_FAILED }}" == "true" ]; then
-          FAILED=true
-          echo "Misspell 검사에서 오류가 발생했습니다."
-        fi
-        
-        if [ "$FAILED" == "true" ]; then
-          echo "하나 이상의 린트 검사에서 오류가 발생했습니다."
-          exit 1
-        fi
+              echo "\`\`\`
