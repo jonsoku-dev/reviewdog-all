@@ -14,13 +14,24 @@ function copyConfigFiles(workdir, toolName, configPath) {
   // 작업 디렉토리 생성
   ensureDirectoryExists(workdir);
   
-  // configs 디렉토리 경로 확인
-  const sourceDir = path.join(__dirname, 'configs', toolName);
+  // GitHub Actions 환경에서의 configs 디렉토리 경로 설정
+  const actionPath = process.env.GITHUB_ACTION_PATH || __dirname;
+  const sourceDir = path.join(actionPath, 'configs', toolName);
+  console.log(`[${toolName}] 액션 경로:`, actionPath);
   console.log(`[${toolName}] 소스 디렉토리 경로:`, sourceDir);
   
   if (!fs.existsSync(sourceDir)) {
     console.error(`[${toolName}] 소스 디렉토리가 존재하지 않습니다:`, sourceDir);
-    throw new Error(`소스 디렉토리를 찾을 수 없음: ${sourceDir}`);
+    // 상위 디렉토리 탐색
+    const parentSourceDir = path.join(actionPath, '..', 'configs', toolName);
+    console.log(`[${toolName}] 상위 디렉토리 탐색:`, parentSourceDir);
+    
+    if (fs.existsSync(parentSourceDir)) {
+      console.log(`[${toolName}] 상위 디렉토리에서 configs 발견`);
+      sourceDir = parentSourceDir;
+    } else {
+      throw new Error(`소스 디렉토리를 찾을 수 없음: ${sourceDir} 또는 ${parentSourceDir}`);
+    }
   }
   
   try {
@@ -47,7 +58,7 @@ function copyConfigFiles(workdir, toolName, configPath) {
           }
           fs.copyFileSync(sourcePath, targetPath);
         }
-        console.log(`[${toolName}] ✓ ${file} 복사 완료`);
+        console.log(`[${toolName}] ✓ ${file} 복사 완료 -> ${targetPath}`);
       } catch (err) {
         console.error(`[${toolName}] ✗ ${file} 복사 실패:`, err.message);
         throw err;
