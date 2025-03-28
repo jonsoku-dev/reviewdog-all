@@ -260,7 +260,7 @@ runs:
 
     # AI 코드 리뷰
     - name: Run AI Code Review
-      if: inputs.skip_ai_review != 'true' && inputs.openai_api_key != ''
+      if: inputs.skip_ai_review != 'true'
       id: ai_review
       shell: bash
       continue-on-error: true
@@ -275,7 +275,7 @@ runs:
         node ${{ github.action_path }}/ai/code-review.js
 
     - name: Record AI Review Result
-      if: inputs.skip_ai_review != 'true' && inputs.openai_api_key != ''
+      if: inputs.skip_ai_review != 'true'
       shell: bash
       run: |
         export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
