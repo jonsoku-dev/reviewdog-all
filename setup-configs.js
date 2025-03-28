@@ -78,7 +78,8 @@ function createConfig(workdir, inputs) {
   }
 }
 
-// GitHub Actions 입력 값 가져오기
+// GitHub Actions 입력 값 가져오기 및 로깅
+console.log('\n=== 설정값 ===');
 const inputs = {
   skip_eslint: process.env.INPUT_SKIP_ESLINT,
   skip_stylelint: process.env.INPUT_SKIP_STYLELINT,
@@ -91,11 +92,18 @@ const inputs = {
   workdir: process.env.INPUT_WORKDIR || '.'
 };
 
-// 입력값 로깅
-console.log('\n=== 설정값 ===');
-Object.entries(inputs).forEach(([key, value]) => {
-  console.log(`${key}:`, value || '(기본값 사용)');
+console.log('환경변수 디버그 정보:');
+Object.keys(process.env).forEach(key => {
+  if (key.startsWith('INPUT_')) {
+    console.log(`${key}:`, process.env[key]);
+  }
 });
+
+console.log('\n설정된 입력값:');
+Object.entries(inputs).forEach(([key, value]) => {
+  console.log(`${key}: ${value}`);
+});
+
 
 // 설정 파일 생성
 createConfig(inputs.workdir, inputs);

@@ -4,11 +4,6 @@ const core = require('@actions/core');
 const fs = require('fs');
 const path = require('path');
 
-// NODE_PATH 설정
-const binPath = path.join(process.cwd(), 'node_modules', '.bin');
-fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
-console.log('✓ node_modules/.bin을 PATH에 추가함');
-
 async function runAICodeReview() {
   try {
     // 환경변수 디버깅
