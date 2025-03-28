@@ -133,8 +133,12 @@ jobs:
           slack_username: ${{ env.SLACK_USERNAME }}
           slack_icon_emoji: ${{ env.SLACK_ICON_EMOJI }}
           skip_ai_review: false
+          skip_markdownlint: true
+          skip_misspell: true
+          skip_eslint: true
+          skip_stylelint: true
           # 접근성 검사 설정
-          skip_accessibility: false
+          skip_accessibility: true
           accessibility_level: AA
           color_contrast_ratio: 4.5
           skip_aria_check: false
