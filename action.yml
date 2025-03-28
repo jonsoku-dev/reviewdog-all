@@ -285,7 +285,6 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
-        GITHUB_PATH: ${{ inputs.github_path }}
       working-directory: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/ai/code-review.js
@@ -310,7 +309,6 @@ runs:
         COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
         SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
         SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
-        GITHUB_PATH: ${{ inputs.github_path }}
       working-directory: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/accessibility/check.js

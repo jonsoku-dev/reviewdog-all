@@ -64,7 +64,7 @@ async function runAICodeReview() {
         
         // OpenAI API 호출 준비
         const requestParams = {
-          model: 'gpt-4',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
             { role: 'user', content: prompt }
