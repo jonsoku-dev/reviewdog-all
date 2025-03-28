@@ -1,4 +1,4 @@
-const { JSDOM } = require('jsdom');
+const { JSDOM, VirtualConsole } = require('jsdom');
 const axeCore = require('axe-core');
 const fs = require('fs');
 const path = require('path');
@@ -38,18 +38,46 @@ async function runAccessibilityCheck() {
       const html = fs.readFileSync(file, 'utf8');
       
       // JSDOM 설정
-      const virtualConsole = new JSDOM.VirtualConsole();
-      virtualConsole.on('error', () => { /* 에러 무시 */ });
+      const virtualConsole = new VirtualConsole();
+      virtualConsole.on("error", () => { /* 콘솔 에러 무시 */ });
+      virtualConsole.on("warn", () => { /* 콘솔 경고 무시 */ });
+      virtualConsole.on("info", () => { /* 콘솔 정보 무시 */ });
+      virtualConsole.on("dir", () => { /* 콘솔 dir 무시 */ });
+
+      // 기본 HTML 템플릿
+      const template = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <base href="file://${path.dirname(file)}/">
+          </head>
+          <body>
+            ${html}
+          </body>
+        </html>
+      `;
       
-      const dom = new JSDOM(html, {
+      const dom = new JSDOM(template, {
         runScripts: 'dangerously',
         resources: 'usable',
         pretendToBeVisual: true,
-        virtualConsole
+        virtualConsole,
+        url: `file://${path.resolve(file)}`,
+        contentType: 'text/html',
+        includeNodeLocations: true
       });
 
       const window = dom.window;
       const document = window.document;
+
+      // 브라우저 환경 시뮬레이션
+      window.requestAnimationFrame = callback => setTimeout(callback, 0);
+      window.cancelAnimationFrame = id => clearTimeout(id);
+      window.HTMLElement.prototype.scrollIntoView = () => {};
+      window.HTMLElement.prototype.getBoundingClientRect = () => ({
+        top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0
+      });
 
       // axe-core 설정
       const axeConfig = {
@@ -75,7 +103,7 @@ async function runAccessibilityCheck() {
 
         console.log('axe-core 실행 중...');
         // axe-core 실행
-        const axeResults = await window.axe.run(document, axeConfig);
+        const axeResults = await window.axe.run(document.body, axeConfig);
         console.log(`발견된 위반사항: ${axeResults.violations.length}개`);
 
         // 색상 대비 검사
