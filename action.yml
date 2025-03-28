@@ -287,7 +287,7 @@ runs:
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        node ${{ github.action_path }}/ai/code-review.js
+        node ${{ github.action_path }}/code-review.js
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true'
@@ -311,7 +311,7 @@ runs:
         SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        node ${{ github.action_path }}/accessibility/check.js
+        node ${{ github.action_path }}/check.js
 
     - name: Record Accessibility Result
       if: inputs.skip_accessibility != 'true'
