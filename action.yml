@@ -263,6 +263,10 @@ runs:
         AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       run: |
+        echo "Current directory:"
+        echo "--------------------------------"
+        ls -R
+        echo "--------------------------------"
         node ${{ github.action_path }}/ai/code-review.js
 
     # 접근성 검사
