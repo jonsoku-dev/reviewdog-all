@@ -26,7 +26,7 @@ jobs:
           level: warning
           fail_level: warning
           workdir: ./testdata/
-          skip_ai_review: true
+          skip_ai_review: false
           # 접근성 검사 설정
           skip_accessibility: false
           accessibility_level: AA
@@ -50,7 +50,7 @@ jobs:
           level: warning
           fail_level: warning
           workdir: ./testdata/
-          skip_ai_review: true
+          skip_ai_review: false
           # 접근성 검사 설정
           skip_accessibility: false
           accessibility_level: AA
@@ -75,7 +75,7 @@ jobs:
           level: error
           fail_level: error
           workdir: ./testdata/
-          skip_ai_review: true
+          skip_ai_review: false
           # 접근성 검사 설정
           skip_accessibility: false
           accessibility_level: AA
@@ -102,7 +102,7 @@ jobs:
           eslint_flags: "**/*.{js,jsx,ts,tsx}"
           stylelint_input: "**/*.css"
           markdownlint_flags: "**/*.md"
-          skip_ai_review: true
+          skip_ai_review: false
           # 접근성 검사 설정
           skip_accessibility: false
           accessibility_level: AA
@@ -130,7 +130,7 @@ jobs:
           slack_channel: ${{ env.SLACK_CHANNEL }}
           slack_username: ${{ env.SLACK_USERNAME }}
           slack_icon_emoji: ${{ env.SLACK_ICON_EMOJI }}
-          skip_ai_review: true
+          skip_ai_review: false
           # 접근성 검사 설정
           skip_accessibility: false
           accessibility_level: AA
