@@ -212,7 +212,6 @@ runs:
       id: eslint
       if: inputs.skip_eslint != 'true'
       uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
-      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -227,13 +226,15 @@ runs:
       shell: bash
       run: |
         echo "ESLINT_OUTCOME=${{ steps.eslint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.eslint.outcome }}" != "success" ]; then
+          echo "ESLINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 7. Stylelint 실행
     - name: Run Stylelint
       id: stylelint
       if: inputs.skip_stylelint != 'true'
       uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
-      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -249,13 +250,15 @@ runs:
       shell: bash
       run: |
         echo "STYLELINT_OUTCOME=${{ steps.stylelint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.stylelint.outcome }}" != "success" ]; then
+          echo "STYLELINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 8. Markdownlint 실행
     - name: Run Markdownlint
       id: markdownlint
       if: inputs.skip_markdownlint != 'true'
       uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
-      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -269,13 +272,15 @@ runs:
       shell: bash
       run: |
         echo "MARKDOWNLINT_OUTCOME=${{ steps.markdownlint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.markdownlint.outcome }}" != "success" ]; then
+          echo "MARKDOWNLINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 9. Misspell 실행
     - name: Run Misspell
       id: misspell
       if: inputs.skip_misspell != 'true'
       uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
-      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -292,6 +297,9 @@ runs:
       shell: bash
       run: |
         echo "MISSPELL_OUTCOME=${{ steps.misspell.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.misspell.outcome }}" != "success" ]; then
+          echo "MISSPELL_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 10. 결과 수집
     - name: Collect Results
@@ -461,3 +469,34 @@ runs:
         LINT_RESULTS: ${{ env.LINT_RESULTS }}
       run: |
         node ${{ github.action_path }}/notify/email.js
+
+    # 마지막에 전체 결과 확인 및 실패 처리
+    - name: Check Overall Results
+      shell: bash
+      run: |
+        FAILED=false
+        
+        if [ "${{ env.ESLINT_FAILED }}" == "true" ]; then
+          FAILED=true
+          echo "ESLint 검사에서 오류가 발생했습니다."
+        fi
+        
+        if [ "${{ env.STYLELINT_FAILED }}" == "true" ]; then
+          FAILED=true
+          echo "Stylelint 검사에서 오류가 발생했습니다."
+        fi
+        
+        if [ "${{ env.MARKDOWNLINT_FAILED }}" == "true" ]; then
+          FAILED=true
+          echo "Markdownlint 검사에서 오류가 발생했습니다."
+        fi
+        
+        if [ "${{ env.MISSPELL_FAILED }}" == "true" ]; then
+          FAILED=true
+          echo "Misspell 검사에서 오류가 발생했습니다."
+        fi
+        
+        if [ "$FAILED" == "true" ]; then
+          echo "하나 이상의 린트 검사에서 오류가 발생했습니다."
+          exit 1
+        fi

@@ -23,8 +23,8 @@ jobs:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
           filter_mode: nofilter
-          level: info
-          fail_level: none
+          level: warning
+          fail_level: warning
           workdir: ./testdata/
 
   test-pr-check:
@@ -41,7 +41,7 @@ jobs:
           reporter: github-pr-check
           filter_mode: nofilter
           level: warning
-          fail_level: none
+          fail_level: warning
           workdir: ./testdata/
 
   test-pr-review:
@@ -59,7 +59,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: nofilter
           level: error
-          fail_level: none
+          fail_level: error
           workdir: ./testdata/
 
   test-no-config:
@@ -75,8 +75,8 @@ jobs:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
           filter_mode: nofilter
-          level: info
-          fail_level: none
+          level: warning
+          fail_level: warning
           workdir: ./testdata/no-config/
           eslint_flags: "**/*.{js,jsx,ts,tsx}"
           stylelint_input: "**/*.css"
@@ -94,8 +94,8 @@ jobs:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
           filter_mode: nofilter
-          level: info
-          fail_level: none
+          level: warning
+          fail_level: warning
           workdir: ./testdata/
           notification_type: slack
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

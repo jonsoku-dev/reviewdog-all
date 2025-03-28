@@ -50,9 +50,12 @@ async function sendSlackNotification() {
     if (line.includes(':')) {
       const [linter, result] = line.split(':').map(s => s.trim());
       if (linter && result) {
-        const status = result.includes('✅') ? 'success' : 
-                      result.includes('❌') ? 'failure' : 
-                      result.includes('⏭️') ? 'skipped' : 'unknown';
+        // 실패 상태 확인을 위한 환경 변수 체크
+        const envVar = `${linter.toUpperCase()}_FAILED`;
+        const hasFailed = process.env[envVar] === 'true';
+        
+        const status = hasFailed ? 'failure' :
+                      result.includes('⏭️') ? 'skipped' : 'success';
         
         linterResults[linter] = {
           status,
