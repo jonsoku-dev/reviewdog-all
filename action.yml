@@ -271,12 +271,14 @@ runs:
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       working-directory: ${{ inputs.workdir }}
       run: |
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         node ${{ github.action_path }}/ai/code-review.js
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true' && inputs.openai_api_key != ''
       shell: bash
       run: |
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         echo "AI_REVIEW_OUTCOME=${{ steps.ai_review.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.ai_review.outcome }}" != "success" ]; then
           echo "AI_REVIEW_FAILED=true" >> $GITHUB_ENV
