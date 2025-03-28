@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 function createConfig(tempDir, inputs) {
+  if (!tempDir) {
+    console.error('TEMP_DIR이 설정되지 않았습니다.');
+    process.exit(1);
+  }
+
   // ESLint 설정 (with Prettier)
   if (inputs.skip_eslint !== 'true') {
     const eslintConfig = inputs.eslint_config_path
@@ -57,6 +62,8 @@ function createConfig(tempDir, inputs) {
       JSON.stringify(markdownlintConfig, null, 2)
     );
   }
+
+  console.log('설정 파일 생성 완료:', tempDir);
 }
 
 // GitHub Actions 입력 값 가져오기
@@ -69,4 +76,5 @@ const inputs = {
   markdownlint_config_path: process.env.INPUT_MARKDOWNLINT_CONFIG_PATH
 };
 
+// 설정 파일 생성
 createConfig(process.env.TEMP_DIR, inputs); 

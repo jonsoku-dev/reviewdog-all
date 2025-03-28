@@ -13,6 +13,9 @@ function setupWorkspace(inputs) {
 
   // 임시 디렉토리 생성
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-action-'));
+  
+  // GITHUB_ENV에 TEMP_DIR 추가
+  fs.appendFileSync(process.env.GITHUB_ENV, `TEMP_DIR=${tempDir}\n`);
   process.env.TEMP_DIR = tempDir;
 
   // package.json 생성
@@ -66,6 +69,7 @@ function setupWorkspace(inputs) {
     }
   }
 
+  console.log('작업 디렉토리:', tempDir);
   return tempDir;
 }
 
@@ -77,5 +81,4 @@ const inputs = {
 };
 
 // 작업 공간 설정 실행
-const workDir = setupWorkspace(inputs);
-console.log('작업 디렉토리:', workDir); 
+setupWorkspace(inputs); 
