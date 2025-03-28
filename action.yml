@@ -263,27 +263,24 @@ runs:
       if: inputs.skip_ai_review != 'true'
       id: ai_review
       shell: bash
+      continue-on-error: true
       env:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        echo "=== AI 코드 리뷰 디버그 정보 ==="
-        echo "현재 디렉토리: $(pwd)"
-        echo "node 버전: $(node -v)"
-        echo "npm 버전: $(npm -v)"
-        echo "node_modules 위치:"
-        ls -la node_modules || echo "node_modules not found"
-        echo "상위 디렉토리의 node_modules 위치:"
-        ls -la ../node_modules || echo "node_modules not found in parent directory"
-        echo "package.json 내용:"
-        cat package.json || echo "package.json not found"
-        echo "=== 모듈 경로 확인 ==="
-        node -e "console.log('Module paths:', module.paths)"
-        echo "=== AI 코드 리뷰 실행 ==="
         export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
         node ${{ github.action_path }}/ai/code-review.js
+
+    - name: Record AI Review Result
+      if: inputs.skip_ai_review != 'true'
+      shell: bash
+      run: |
+        echo "AI_REVIEW_OUTCOME=${{ steps.ai_review.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.ai_review.outcome }}" != "success" ]; then
+          echo "AI_REVIEW_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 접근성 검사
     - name: Run Accessibility Check
