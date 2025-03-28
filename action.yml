@@ -189,7 +189,7 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
-        workdir: ${{ inputs.workdir }}
+        path: ${{ inputs.workdir }}
 
     # 9. Misspell 실행
     - name: Run Misspell
@@ -204,4 +204,4 @@ runs:
         locale: ${{ inputs.misspell_locale }}
         ignore: ${{ inputs.misspell_ignore }}
         pattern: "**/*"
-        path: "."
+        path: ${{ inputs.workdir }}
