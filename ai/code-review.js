@@ -1,71 +1,119 @@
-const { Configuration, OpenAIApi } = require('openai');
-const { getOctokit } = require('@actions/github');
+const OpenAI = require('openai');
+// const { getOctokit, context } = require('@actions/github');
 const core = require('@actions/core');
 const fs = require('fs');
-const path = require('path');
 
 async function runAICodeReview() {
   try {
     const openaiApiKey = process.env.OPENAI_API_KEY;
-    const reviewLevel = process.env.AI_REVIEW_LEVEL;
-    const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT);
+    // const githubToken = process.env.GITHUB_TOKEN;
+    const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
+    const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT || '5');
 
+    // OpenAI 클라이언트 초기화 디버깅
+    core.debug('OpenAI 클라이언트 초기화 시작...');
     if (!openaiApiKey) {
-      throw new Error('OpenAI API 키가 필요합니다.');
+      core.setOutput('ai_review_outcome', 'skipped');
+      throw new Error('OpenAI API 키가 설정되지 않았습니다.');
     }
-
-    const configuration = new Configuration({
+    
+    const openai = new OpenAI({
       apiKey: openaiApiKey,
     });
-    const openai = new OpenAIApi(configuration);
+    core.debug('OpenAI 클라이언트 초기화 완료');
 
-    // GitHub API 클라이언트 설정
-    const octokit = getOctokit(process.env.GITHUB_TOKEN);
-    const context = JSON.parse(process.env.GITHUB_CONTEXT);
+    // const octokit = getOctokit(githubToken);
 
-    // PR의 변경된 파일 가져오기
-    const { data: changedFiles } = await octokit.rest.pulls.listFiles({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.payload.pull_request.number,
-    });
-
+    // 테스트용 임시 코드 (실제 PR 변경 파일 대신 현재 디렉토리의 .js 파일들을 검사)
+    const testFiles = fs.readdirSync('.').filter(file => file.endsWith('.js'));
+    core.debug(`검토할 파일 수: ${testFiles.length}`);
+    
     const reviews = [];
+    let totalSuggestions = 0;
 
-    for (const file of changedFiles) {
-      if (file.status === 'removed') continue;
+    for (const file of testFiles) {
+      core.debug(`파일 분석 시작: ${file}`);
 
-      const fileContent = fs.readFileSync(file.filename, 'utf8');
-      
-      // AI 리뷰 프롬프트 생성
-      const prompt = generateReviewPrompt(fileContent, reviewLevel);
-      
-      // OpenAI API 호출
-      const response = await openai.createChatCompletion({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-      });
+      try {
+        // 파일 내용 읽기
+        const fileContent = fs.readFileSync(file, 'utf8');
+        core.debug(`파일 내용 로드 완료: ${file} (${fileContent.length} 바이트)`);
+        
+        // AI 리뷰 프롬프트 생성
+        const prompt = generateReviewPrompt(fileContent, reviewLevel);
+        core.debug('리뷰 프롬프트 생성 완료');
+        
+        // OpenAI API 호출 준비
+        const requestParams = {
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        };
+        
+        core.debug('OpenAI API 호출 시작...');
+        core.debug(`요청 파라미터: ${JSON.stringify(requestParams, null, 2)}`);
+        
+        // OpenAI API 호출
+        const response = await openai.chat.completions.create(requestParams);
+        
+        core.debug('OpenAI API 응답 수신');
+        core.debug(`응답 상태: ${response.choices ? 'Success' : 'No Choices'}`);
+        
+        if (!response.choices || response.choices.length === 0) {
+          throw new Error('AI가 응답을 생성하지 못했습니다.');
+        }
 
-      const suggestions = response.data.choices[0].message.content;
-      
-      // 리뷰 결과 저장
-      reviews.push({
-        file: file.filename,
-        suggestions: suggestions.split('\n').slice(0, suggestionsLimit),
-      });
+        const suggestions = response.choices[0].message.content;
+        const suggestionsList = suggestions.split('\n').slice(0, suggestionsLimit);
+        totalSuggestions += suggestionsList.length;
+        core.debug(`AI 제안 수신 완료 (${suggestionsList.length} 줄)`);
+        
+        reviews.push({
+          file: file,
+          suggestions: suggestionsList,
+        });
+        
+        core.debug(`파일 분석 완료: ${file}`);
+        
+      } catch (fileError) {
+        core.warning(`파일 ${file} 처리 중 오류 발생: ${fileError.message}`);
+        continue;
+      }
     }
 
-    // 리뷰 결과를 PR 코멘트로 작성
-    await createPRComment(octokit, context, reviews);
+    core.debug(`총 ${reviews.length}개 파일의 리뷰 완료`);
 
-    core.setOutput('review_count', reviews.length);
+    // 리뷰 결과를 파일로 저장
+    const reviewResult = formatReviewComment(reviews);
+    fs.writeFileSync('ai-review-result.md', reviewResult);
+    core.debug('리뷰 결과를 ai-review-result.md 파일에 저장했습니다.');
+    
+    // GitHub Actions outputs 설정
+    core.setOutput('ai_review_outcome', 'success');
+    core.setOutput('ai_review_count', reviews.length);
+    core.setOutput('ai_suggestions_count', totalSuggestions);
+    
+    // GitHub Actions 환경 변수 설정
+    core.exportVariable('AI_REVIEW_OUTCOME', 'success');
+    core.exportVariable('AI_REVIEW_FAILED', 'false');
     
   } catch (error) {
+    core.error('상세 에러 정보:');
+    core.error(error.stack || error.message);
+    if (error.response) {
+      core.error('API 응답 에러:');
+      core.error(JSON.stringify(error.response.data, null, 2));
+    }
+    
+    // 에러 발생 시 환경 변수 설정
+    core.setOutput('ai_review_outcome', 'failure');
+    core.exportVariable('AI_REVIEW_OUTCOME', 'failure');
+    core.exportVariable('AI_REVIEW_FAILED', 'true');
+    
     core.setFailed(`AI 코드 리뷰 실패: ${error.message}`);
   }
 }
@@ -81,17 +129,6 @@ function generateReviewPrompt(code, level) {
   };
 
   return `${basePrompt}\n${levelSpecificPrompts[level]}\n\n${code}`;
-}
-
-async function createPRComment(octokit, context, reviews) {
-  const comment = formatReviewComment(reviews);
-  
-  await octokit.rest.issues.createComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    issue_number: context.payload.pull_request.number,
-    body: comment,
-  });
 }
 
 function formatReviewComment(reviews) {
