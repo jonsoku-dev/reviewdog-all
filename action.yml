@@ -253,6 +253,31 @@ runs:
       run: |
         node ${{ github.action_path }}/setup-configs.js
 
+    # AI 코드 리뷰
+    - name: Run AI Code Review
+      if: inputs.skip_ai_review != 'true'
+      id: ai_review
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
+        AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
+      run: |
+        node ${{ github.action_path }}/ai/code-review.js
+
+    # 접근성 검사
+    - name: Run Accessibility Check
+      if: inputs.skip_accessibility != 'true'
+      id: accessibility
+      shell: bash
+      env:
+        ACCESSIBILITY_LEVEL: ${{ inputs.accessibility_level }}
+        COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
+        SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
+        SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
+      run: |
+        node ${{ github.action_path }}/accessibility/check.js
+
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
       id: eslint
@@ -350,31 +375,6 @@ runs:
         if [ "${{ steps.misspell.outcome }}" != "success" ]; then
           echo "MISSPELL_FAILED=true" >> $GITHUB_ENV
         fi
-
-    # AI 코드 리뷰
-    - name: Run AI Code Review
-      if: inputs.skip_ai_review != 'true'
-      id: ai_review
-      shell: bash
-      env:
-        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
-        AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
-        AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
-      run: |
-        node ${{ github.action_path }}/ai/code-review.js
-
-    # 접근성 검사
-    - name: Run Accessibility Check
-      if: inputs.skip_accessibility != 'true'
-      id: accessibility
-      shell: bash
-      env:
-        ACCESSIBILITY_LEVEL: ${{ inputs.accessibility_level }}
-        COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
-        SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
-        SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
-      run: |
-        node ${{ github.action_path }}/accessibility/check.js
 
     # 결과 수집에 AI 및 접근성 결과 포함
     - name: Collect Results
