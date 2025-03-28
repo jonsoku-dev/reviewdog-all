@@ -11,8 +11,8 @@ function getDependencies(inputs) {
   // ESLint 관련 패키지
   if (inputs.skip_eslint !== 'true') {
     console.log('\n📦 ESLint 패키지 추가 중...');
-    Object.entries(dependencies.eslint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.eslint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
@@ -23,8 +23,8 @@ function getDependencies(inputs) {
   // Stylelint 관련 패키지
   if (inputs.skip_stylelint !== 'true') {
     console.log('\n📦 Stylelint 패키지 추가 중...');
-    Object.entries(dependencies.stylelint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.stylelint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
@@ -35,8 +35,8 @@ function getDependencies(inputs) {
   // Markdownlint 관련 패키지
   if (inputs.skip_markdownlint !== 'true') {
     console.log('\n📦 Markdownlint 패키지 추가 중...');
-    Object.entries(dependencies.markdownlint).forEach(([group, deps]) => {
-      console.log(`  [${group}]`);
+    Object.entries(dependencies.markdownlint).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
         packages.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
