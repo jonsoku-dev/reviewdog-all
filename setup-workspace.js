@@ -4,13 +4,6 @@ const { execSync } = require('child_process');
 const os = require('os');
 
 function setupWorkspace(inputs) {
-  // 프로젝트 루트의 package.json 확인
-  const rootPackageJson = path.join(process.cwd(), 'package.json');
-  if (fs.existsSync(rootPackageJson)) {
-    console.log('프로젝트에 package.json이 존재합니다. 기존 환경을 사용합니다.');
-    return process.cwd();
-  }
-
   // 임시 디렉토리 생성
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-action-'));
   
@@ -22,7 +15,8 @@ function setupWorkspace(inputs) {
   const packageJson = {
     name: 'lint-tools',
     version: '1.0.0',
-    private: true
+    private: true,
+    type: "module"
   };
 
   fs.writeFileSync(
@@ -30,46 +24,52 @@ function setupWorkspace(inputs) {
     JSON.stringify(packageJson, null, 2)
   );
 
-  // 필요한 패키지 결정
-  const packages = [];
-  
-  if (inputs.skip_eslint !== 'true') {
-    packages.push(
-      'eslint@^8.0.0',
-      'prettier@latest',  // ESLint에서 Prettier를 사용하기 위해 필요
-      'eslint-config-prettier',
-      'eslint-plugin-prettier'
-    );
-  }
+  // 필요한 패키지 목록
+  const packages = [
+    // ESLint 관련
+    'eslint@^8.0.0',
+    'prettier@latest',
+    'eslint-config-prettier',
+    'eslint-plugin-prettier',
+    '@babel/core',
+    '@babel/eslint-parser',
+    '@babel/preset-env',
+    'eslint-plugin-import',
+    'eslint-plugin-node',
+    
+    // Stylelint 관련
+    'stylelint@latest',
+    'stylelint-config-standard',
+    
+    // Markdownlint 관련
+    'markdownlint-cli@latest'
+  ];
 
-  if (inputs.skip_stylelint !== 'true') {
-    packages.push('stylelint@latest');
-  }
-
-  if (inputs.skip_markdownlint !== 'true') {
-    packages.push('markdownlint-cli@latest');
-  }
-
-  // 패키지 설치
-  if (packages.length > 0) {
-    try {
+  try {
+    // 패키지 설치 (프로젝트 루트에 node_modules가 있는 경우 재사용)
+    const rootNodeModules = path.join(process.cwd(), 'node_modules');
+    if (fs.existsSync(rootNodeModules)) {
+      console.log('기존 node_modules를 재사용합니다.');
+      fs.symlinkSync(rootNodeModules, path.join(tempDir, 'node_modules'), 'junction');
+    } else {
+      console.log('새로운 패키지를 설치합니다.');
       process.chdir(tempDir);
       execSync(`npm install --no-package-lock ${packages.join(' ')}`, {
         stdio: 'inherit'
       });
-      
-      // PATH에 node_modules/.bin 추가
-      const binPath = path.join(tempDir, 'node_modules', '.bin');
-      fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
-      
-      console.log('패키지 설치 완료:', packages.join(', '));
-    } catch (error) {
-      console.error('패키지 설치 중 오류 발생:', error);
-      throw error;
     }
+    
+    // PATH에 node_modules/.bin 추가
+    const binPath = path.join(tempDir, 'node_modules', '.bin');
+    fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
+    
+    console.log('패키지 설치 완료:', packages.join(', '));
+    console.log('작업 디렉토리:', tempDir);
+  } catch (error) {
+    console.error('패키지 설치 중 오류 발생:', error);
+    throw error;
   }
 
-  console.log('작업 디렉토리:', tempDir);
   return tempDir;
 }
 

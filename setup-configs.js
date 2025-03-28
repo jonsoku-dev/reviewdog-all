@@ -18,23 +18,26 @@ function createConfig(tempDir, inputs) {
             node: true,
             es2021: true
           },
-          extends: [
-            'eslint:recommended',
-            'plugin:prettier/recommended'
-          ],
+          parser: '@babel/eslint-parser',
           parserOptions: {
             ecmaVersion: 'latest',
-            sourceType: 'module'
+            sourceType: 'module',
+            requireConfigFile: false,
+            babelOptions: {
+              presets: ['@babel/preset-env']
+            }
           },
-          plugins: ['prettier'],
+          extends: [
+            'eslint:recommended',
+            'plugin:prettier/recommended',
+            'plugin:import/errors',
+            'plugin:import/warnings'
+          ],
+          plugins: ['prettier', 'import', 'node'],
           rules: {
-            'prettier/prettier': 'error'
-          },
-          // Prettier 설정을 ESLint 내부에 통합
-          prettier: {
-            semi: true,
-            singleQuote: true,
-            trailingComma: 'es5'
+            'prettier/prettier': 'error',
+            'import/no-unresolved': 'error',
+            'node/no-unsupported-features/es-syntax': 'off'
           }
         };
     
@@ -56,6 +59,20 @@ coverage/
       path.join(tempDir, '.eslintignore'),
       eslintIgnore
     );
+
+    // Prettier 설정 파일 생성
+    const prettierConfig = {
+      semi: true,
+      singleQuote: true,
+      trailingComma: 'es5',
+      printWidth: 100,
+      tabWidth: 2
+    };
+
+    fs.writeFileSync(
+      path.join(tempDir, '.prettierrc'),
+      JSON.stringify(prettierConfig, null, 2)
+    );
   }
 
   // Stylelint 설정
@@ -63,12 +80,29 @@ coverage/
     const stylelintConfig = inputs.stylelint_config_path
       ? JSON.parse(fs.readFileSync(inputs.stylelint_config_path, 'utf8'))
       : {
-          extends: ['stylelint-config-standard']
+          extends: ['stylelint-config-standard'],
+          rules: {
+            'at-rule-no-unknown': null,
+            'no-empty-source': null
+          }
         };
     
     fs.writeFileSync(
-      path.join(tempDir, '.stylelintrc'),
+      path.join(tempDir, '.stylelintrc.json'),
       JSON.stringify(stylelintConfig, null, 2)
+    );
+
+    // .stylelintignore 파일 생성
+    const stylelintIgnore = `
+node_modules/
+dist/
+build/
+coverage/
+    `.trim();
+
+    fs.writeFileSync(
+      path.join(tempDir, '.stylelintignore'),
+      stylelintIgnore
     );
   }
 
@@ -78,12 +112,26 @@ coverage/
       ? JSON.parse(fs.readFileSync(inputs.markdownlint_config_path, 'utf8'))
       : {
           'default': true,
-          'line-length': false
+          'line-length': false,
+          'no-inline-html': false
         };
     
     fs.writeFileSync(
       path.join(tempDir, '.markdownlint.json'),
       JSON.stringify(markdownlintConfig, null, 2)
+    );
+
+    // .markdownlintignore 파일 생성
+    const markdownlintIgnore = `
+node_modules/
+dist/
+build/
+coverage/
+    `.trim();
+
+    fs.writeFileSync(
+      path.join(tempDir, '.markdownlintignore'),
+      markdownlintIgnore
     );
   }
 

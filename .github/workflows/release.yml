@@ -22,11 +22,10 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         id: bumpr
         uses: haya14busa/action-bumpr@78ab5a104d20896c9c9122c64221b3aecf1a8cbb # v1.10.0
         with:
-          default_bump_level: patch
           tag_name: v%s
 
       - name: Update Semver
