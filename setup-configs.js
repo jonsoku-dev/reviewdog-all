@@ -1,11 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-// NODE_PATH 설정
-const binPath = path.join(process.cwd(), 'node_modules', '.bin');
-fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
-console.log('✓ node_modules/.bin을 PATH에 추가함');
-
 function copyConfigFiles(workdir, toolName, configPath) {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
   const sourceDir = path.join(__dirname, 'configs', toolName);
