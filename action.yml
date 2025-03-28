@@ -62,9 +62,9 @@ inputs:
     default: "false"
 
   skip_ai_review:
-    description: "AI 코드 리뷰 스킵"
-    required: false
-    default: "false"
+    description: "AI 코드 리뷰 스킵 (과금이 되니 기본값은 true)"
+    required: true
+    default: "true"
 
   skip_accessibility:
     description: "접근성 검사 스킵"

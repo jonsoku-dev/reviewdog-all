@@ -137,33 +137,3 @@ jobs:
           color_contrast_ratio: 4.5
           skip_aria_check: false
           skip_alt_text_check: false
-
-  # AI 코드 리뷰는 수동으로 트리거할 때만 실행
-  test-ai-review:
-    if: github.event_name == 'workflow_dispatch'
-    name: AI 코드 리뷰 테스트
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./
-        with:
-          github_token: ${{ secrets.github_token }}
-          reporter: github-pr-review
-          filter_mode: nofilter
-          level: info
-          fail_level: warning
-          workdir: ./testdata/
-          # AI 리뷰 설정
-          skip_ai_review: false
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          ai_review_level: detailed
-          ai_suggestions_limit: 5
-          # 다른 검사는 스킵
-          skip_eslint: true
-          skip_stylelint: true
-          skip_markdownlint: true
-          skip_misspell: true
-          skip_accessibility: true
