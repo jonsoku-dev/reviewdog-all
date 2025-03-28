@@ -150,8 +150,6 @@ runs:
       working-directory: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/setup-configs.js
-        # 설정 파일들을 작업 디렉토리로 복사
-        cp -r ${{ env.TEMP_DIR }}/.* ${{ inputs.workdir }}/ 2>/dev/null || true
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
@@ -207,13 +205,3 @@ runs:
         ignore: ${{ inputs.misspell_ignore }}
         pattern: "**/*"
         path: "."
-
-    # 10. 정리
-    - name: Cleanup
-      if: always()
-      shell: bash
-      working-directory: ${{ inputs.workdir }}
-      run: |
-        if [ ! -z "${TEMP_DIR}" ]; then
-          rm -rf ${TEMP_DIR}
-        fi

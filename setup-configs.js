@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function copyConfigFiles(tempDir, toolName, configPath) {
+function copyConfigFiles(workdir, toolName, configPath) {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
   const sourceDir = path.join(__dirname, 'configs', toolName);
   
@@ -11,7 +11,7 @@ function copyConfigFiles(tempDir, toolName, configPath) {
     
     files.forEach(file => {
       const sourcePath = path.join(sourceDir, file);
-      const targetPath = path.join(tempDir, file);
+      const targetPath = path.join(workdir, file);
       
       try {
         if (configPath && file.endsWith('.json')) {
@@ -37,39 +37,34 @@ function copyConfigFiles(tempDir, toolName, configPath) {
   }
 }
 
-function createConfig(tempDir, inputs) {
+function createConfig(workdir, inputs) {
   console.log('\n=== 설정 파일 생성 시작 ===');
-  console.log('작업 디렉토리:', tempDir);
+  console.log('작업 디렉토리:', workdir);
   
-  if (!tempDir) {
-    console.error('❌ TEMP_DIR이 설정되지 않았습니다.');
-    process.exit(1);
-  }
-
   try {
     // ESLint 설정 (with Prettier)
     if (inputs.skip_eslint !== 'true') {
-      copyConfigFiles(tempDir, 'eslint', inputs.eslint_config_path);
+      copyConfigFiles(workdir, 'eslint', inputs.eslint_config_path);
     } else {
       console.log('\n[eslint] 건너뛰기');
     }
 
     // Stylelint 설정
     if (inputs.skip_stylelint !== 'true') {
-      copyConfigFiles(tempDir, 'stylelint', inputs.stylelint_config_path);
+      copyConfigFiles(workdir, 'stylelint', inputs.stylelint_config_path);
     } else {
       console.log('\n[stylelint] 건너뛰기');
     }
 
     // Markdownlint 설정
     if (inputs.skip_markdownlint !== 'true') {
-      copyConfigFiles(tempDir, 'markdownlint', inputs.markdownlint_config_path);
+      copyConfigFiles(workdir, 'markdownlint', inputs.markdownlint_config_path);
     } else {
       console.log('\n[markdownlint] 건너뛰기');
     }
 
     console.log('\n✅ 모든 설정 파일 생성 완료');
-    console.log('작업 디렉토리:', tempDir);
+    console.log('작업 디렉토리:', workdir);
   } catch (err) {
     console.error('\n❌ 설정 파일 생성 중 오류 발생:', err.message);
     process.exit(1);
@@ -83,7 +78,8 @@ const inputs = {
   skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT,
   eslint_config_path: process.env.INPUT_ESLINT_CONFIG_PATH,
   stylelint_config_path: process.env.INPUT_STYLELINT_CONFIG_PATH,
-  markdownlint_config_path: process.env.INPUT_MARKDOWNLINT_CONFIG_PATH
+  markdownlint_config_path: process.env.INPUT_MARKDOWNLINT_CONFIG_PATH,
+  workdir: process.env.INPUT_WORKDIR || '.'
 };
 
 // 입력값 로깅
@@ -93,4 +89,4 @@ Object.entries(inputs).forEach(([key, value]) => {
 });
 
 // 설정 파일 생성
-createConfig(process.env.TEMP_DIR, inputs); 
+createConfig(inputs.workdir, inputs);
