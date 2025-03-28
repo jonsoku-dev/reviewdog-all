@@ -103,7 +103,14 @@ async function sendSlackNotification() {
     let text = `${statusEmoji} *${result.name}*: ${statusText}`;
     
     if (result.details) {
-      text += `\n\`\`\`${result.details}\`\`\``;
+      // AI 리뷰와 접근성 검사 결과에 대한 특별 처리
+      if (result.name === 'AI 코드 리뷰' && result.status === 'failed') {
+        text += `\n${result.details}`;
+      } else if (result.name === '접근성 검사' && result.status === 'failed') {
+        text += `\n${result.details}`;
+      } else {
+        text += `\n\`\`\`${result.details}\`\`\``;
+      }
     }
 
     message.attachments[0].blocks.push({
@@ -132,11 +139,18 @@ async function sendSlackNotification() {
 
     results.failed_linters.forEach(linter => {
       if (linter.details) {
+        let detailsText = linter.details;
+        
+        // AI 리뷰와 접근성 검사에 대한 특별 처리
+        if (linter.name === 'AI 코드 리뷰' || linter.name === '접근성 검사') {
+          detailsText = `${linter.details}`;
+        }
+
         message.attachments[0].blocks.push({
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${linter.name}*:\n\`\`\`${linter.details}\`\`\``
+            text: `*${linter.name}*:\n${detailsText}`
           }
         });
       }

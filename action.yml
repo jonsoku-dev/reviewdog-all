@@ -277,14 +277,12 @@ runs:
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         node ${{ github.action_path }}/ai/code-review.js
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true'
       shell: bash
       run: |
-        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         echo "AI_REVIEW_OUTCOME=${{ steps.ai_review.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.ai_review.outcome }}" != "success" ]; then
           echo "AI_REVIEW_FAILED=true" >> $GITHUB_ENV
@@ -303,14 +301,12 @@ runs:
         SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         node ${{ github.action_path }}/accessibility/check.js
 
     - name: Record Accessibility Result
       if: inputs.skip_accessibility != 'true'
       shell: bash
       run: |
-        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules"
         echo "ACCESSIBILITY_OUTCOME=${{ steps.accessibility.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.accessibility.outcome }}" != "success" ]; then
           echo "ACCESSIBILITY_FAILED=true" >> $GITHUB_ENV

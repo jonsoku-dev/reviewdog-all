@@ -2,23 +2,34 @@ const OpenAI = require('openai');
 // const { getOctokit, context } = require('@actions/github');
 const core = require('@actions/core');
 const fs = require('fs');
+const path = require('path');
+
+// NODE_PATH 설정
+const binPath = path.join(process.cwd(), 'node_modules', '.bin');
+fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
+console.log('✓ node_modules/.bin을 PATH에 추가함');
 
 async function runAICodeReview() {
   try {
     // 환경변수 디버깅
     console.log('=== 환경변수 디버깅 ===');
-    console.log('OPENAI_API_KEY 존재여부:', !!process.env.OPENAI_API_KEY);
-    console.log('AI_REVIEW_LEVEL:', process.env.AI_REVIEW_LEVEL);
-    console.log('AI_SUGGESTIONS_LIMIT:', process.env.AI_SUGGESTIONS_LIMIT);
-    console.log('NODE_PATH:', process.env.NODE_PATH);
-    
-    // 전체 환경변수 목록 (값은 보안상 제외)
-    console.log('\n=== 사용 가능한 환경변수 키 목록 ===');
-    Object.keys(process.env).forEach(key => {
-      console.log(key);
+    console.log('process.env:', {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '설정됨' : '설정되지 않음',
+      AI_REVIEW_LEVEL: process.env.AI_REVIEW_LEVEL,
+      AI_SUGGESTIONS_LIMIT: process.env.AI_SUGGESTIONS_LIMIT,
+      NODE_PATH: process.env.NODE_PATH,
+      PATH: process.env.PATH
     });
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
+    // GitHub Actions의 core.getInput() 사용 시도
+    try {
+      const openaiApiKeyFromCore = core.getInput('openai_api_key');
+      console.log('core.getInput("openai_api_key"):', openaiApiKeyFromCore ? '설정됨' : '설정되지 않음');
+    } catch (e) {
+      console.log('core.getInput() 에러:', e.message);
+    }
+
+    const openaiApiKey = process.env.OPENAI_API_KEY || core.getInput('openai_api_key');
     // const githubToken = process.env.GITHUB_TOKEN;
     const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
     const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT || '5');
