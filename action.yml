@@ -1,6 +1,6 @@
 # 액션 메타데이터
 name: "Unified Lint Action"
-description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell)"
+description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell, AI Code Review, Accessibility)"
 author: "Jonsoku"
 
 # 버전 관리 주석 (수정하지 마세요!)
@@ -167,6 +167,52 @@ inputs:
     description: "수신자 이메일 주소 (콤마로 구분)"
     required: false
 
+  # AI 코드 리뷰 설정
+  enable_ai_review:
+    description: "AI 코드 리뷰 활성화"
+    required: false
+    default: "false"
+  
+  openai_api_key:
+    description: "OpenAI API 키"
+    required: false
+  
+  ai_review_level:
+    description: "AI 리뷰 상세도 [basic,detailed,security,performance]"
+    required: false
+    default: "basic"
+  
+  ai_suggestions_limit:
+    description: "AI 제안 최대 개수"
+    required: false
+    default: "5"
+
+  # 접근성 검사 설정
+  enable_accessibility:
+    description: "접근성 검사 활성화"
+    required: false
+    default: "false"
+  
+  accessibility_level:
+    description: "접근성 검사 레벨 [A,AA,AAA]"
+    required: false
+    default: "AA"
+  
+  color_contrast_ratio:
+    description: "최소 색상 대비 비율"
+    required: false
+    default: "4.5"
+  
+  skip_aria_check:
+    description: "ARIA 속성 검사 스킵"
+    required: false
+    default: "false"
+  
+  skip_alt_text_check:
+    description: "대체 텍스트 검사 스킵"
+    required: false
+    default: "false"
+
 runs:
   using: "composite"
   steps:
@@ -305,7 +351,32 @@ runs:
           echo "MISSPELL_FAILED=true" >> $GITHUB_ENV
         fi
 
-    # 10. 결과 수집
+    # AI 코드 리뷰
+    - name: Run AI Code Review
+      if: inputs.enable_ai_review == 'true'
+      id: ai_review
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
+        AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
+      run: |
+        node ${{ github.action_path }}/ai/code-review.js
+
+    # 접근성 검사
+    - name: Run Accessibility Check
+      if: inputs.enable_accessibility == 'true'
+      id: accessibility
+      shell: bash
+      env:
+        ACCESSIBILITY_LEVEL: ${{ inputs.accessibility_level }}
+        COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
+        SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
+        SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
+      run: |
+        node ${{ github.action_path }}/accessibility/check.js
+
+    # 결과 수집에 AI 및 접근성 결과 포함
     - name: Collect Results
       shell: bash
       env:
@@ -316,6 +387,8 @@ runs:
         ESLINT_FLAGS: ${{ inputs.eslint_flags }}
         STYLELINT_INPUT: ${{ inputs.stylelint_input }}
         MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
+        ENABLE_AI_REVIEW: ${{ inputs.enable_ai_review }}
+        ENABLE_ACCESSIBILITY: ${{ inputs.enable_accessibility }}
       run: |
         node ${{ github.action_path }}/collect-results.js
 

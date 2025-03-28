@@ -102,3 +102,80 @@ jobs:
           slack_channel: ${{ env.SLACK_CHANNEL }}
           slack_username: ${{ env.SLACK_USERNAME }}
           slack_icon_emoji: ${{ env.SLACK_ICON_EMOJI }}
+
+  test-ai-review:
+    if: github.event_name == 'pull_request'
+    name: AI 코드 리뷰 테스트
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: nofilter
+          level: info
+          fail_level: warning
+          workdir: ./testdata/
+          enable_ai_review: true
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_review_level: detailed
+          ai_suggestions_limit: 5
+
+  test-accessibility:
+    name: 접근성 검사 테스트
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: nofilter
+          level: warning
+          fail_level: error
+          workdir: ./testdata/
+          enable_accessibility: true
+          accessibility_level: AA
+          color_contrast_ratio: 4.5
+          skip_aria_check: false
+          skip_alt_text_check: false
+
+  test-ai-and-accessibility:
+    if: github.event_name == 'pull_request'
+    name: AI 리뷰 및 접근성 통합 테스트
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: nofilter
+          level: warning
+          fail_level: warning
+          workdir: ./testdata/
+          # AI 리뷰 설정
+          enable_ai_review: true
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_review_level: detailed
+          ai_suggestions_limit: 5
+          # 접근성 검사 설정
+          enable_accessibility: true
+          accessibility_level: AA
+          color_contrast_ratio: 4.5
+          # 결과 통지
+          notification_type: slack
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          slack_channel: ${{ env.SLACK_CHANNEL }}
+          slack_username: ${{ env.SLACK_USERNAME }}
+          slack_icon_emoji: ${{ env.SLACK_ICON_EMOJI }}
