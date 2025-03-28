@@ -22,7 +22,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
-          filter_mode: file
+          filter_mode: nofilter
           level: info
           fail_level: none
           workdir: ./testdata/
@@ -39,7 +39,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-check
-          filter_mode: file
+          filter_mode: nofilter
           level: warning
           fail_level: none
           workdir: ./testdata/
@@ -57,7 +57,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          filter_mode: file
+          filter_mode: nofilter
           level: error
           fail_level: none
           workdir: ./testdata/
@@ -74,7 +74,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          filter_mode: file
+          filter_mode: nofilter
           level: info
           fail_level: none
           workdir: ./testdata/no-config/
@@ -93,7 +93,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-check
-          filter_mode: file
+          filter_mode: nofilter
           level: info
           fail_level: none
           workdir: ./testdata/
