@@ -1,0 +1,57 @@
+name: AI Code Review
+on:
+  # 수동 트리거
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: '리뷰할 브랜치 또는 PR 번호'
+        required: true
+        type: string
+      review_level:
+        description: 'AI 리뷰 상세도'
+        required: true
+        type: choice
+        options:
+          - basic
+          - detailed
+          - security
+          - performance
+        default: 'detailed'
+      suggestions_limit:
+        description: 'AI 제안 최대 개수'
+        required: true
+        type: number
+        default: 5
+
+jobs:
+  ai-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+          fetch-depth: 0
+
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: nofilter
+          level: info
+          fail_level: warning
+          workdir: ./
+          # AI 리뷰 설정
+          skip_ai_review: false
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_review_level: ${{ github.event.inputs.review_level }}
+          ai_suggestions_limit: ${{ github.event.inputs.suggestions_limit }}
+          # 다른 검사는 스킵
+          skip_eslint: true
+          skip_stylelint: true
+          skip_markdownlint: true
+          skip_misspell: true
+          skip_accessibility: true 

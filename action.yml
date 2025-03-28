@@ -1,6 +1,6 @@
 # 액션 메타데이터
 name: "Unified Lint Action"
-description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell)"
+description: "통합 린트 액션 (ESLint with Prettier, Stylelint, Markdownlint, Misspell, AI Code Review, Accessibility)"
 author: "Jonsoku"
 
 # 버전 관리 주석 (수정하지 마세요!)
@@ -58,6 +58,16 @@ inputs:
 
   skip_misspell:
     description: "Misspell 스킵"
+    required: false
+    default: "false"
+
+  skip_ai_review:
+    description: "AI 코드 리뷰 스킵 (과금이 되니 기본값은 true)"
+    required: true
+    default: "true"
+
+  skip_accessibility:
+    description: "접근성 검사 스킵"
     required: false
     default: "false"
 
@@ -167,6 +177,47 @@ inputs:
     description: "수신자 이메일 주소 (콤마로 구분)"
     required: false
 
+  # AI 코드 리뷰 설정
+  openai_api_key:
+    description: "OpenAI API 키"
+    required: false
+  
+  ai_review_level:
+    description: "AI 리뷰 상세도 [basic,detailed,security,performance]"
+    required: false
+    default: "basic"
+  
+  ai_suggestions_limit:
+    description: "AI 제안 최대 개수"
+    required: false
+    default: "5"
+
+  # 접근성 검사 설정
+  accessibility_level:
+    description: "접근성 검사 레벨 [A,AA,AAA]"
+    required: false
+    default: "AA"
+  
+  axe_config_path:
+    description: "axe-core 설정 파일 경로"
+    required: false
+    default: ""
+
+  color_contrast_ratio:
+    description: "최소 색상 대비 비율"
+    required: false
+    default: "4.5"
+  
+  skip_aria_check:
+    description: "ARIA 속성 검사 스킵"
+    required: false
+    default: "false"
+  
+  skip_alt_text_check:
+    description: "대체 텍스트 검사 스킵"
+    required: false
+    default: "false"
+
 runs:
   using: "composite"
   steps:
@@ -207,6 +258,55 @@ runs:
       run: |
         node ${{ github.action_path }}/setup-configs.js
 
+    # AI 코드 리뷰
+    - name: Run AI Code Review
+      if: inputs.skip_ai_review != 'true'
+      id: ai_review
+      shell: bash
+      continue-on-error: true
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
+        AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
+        node ${{ github.action_path }}/ai/code-review.js
+
+    - name: Record AI Review Result
+      if: inputs.skip_ai_review != 'true'
+      shell: bash
+      run: |
+        echo "AI_REVIEW_OUTCOME=${{ steps.ai_review.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.ai_review.outcome }}" != "success" ]; then
+          echo "AI_REVIEW_FAILED=true" >> $GITHUB_ENV
+        fi
+
+    # 접근성 검사
+    - name: Run Accessibility Check
+      if: inputs.skip_accessibility != 'true'
+      id: accessibility
+      shell: bash
+      continue-on-error: true
+      env:
+        ACCESSIBILITY_LEVEL: ${{ inputs.accessibility_level }}
+        COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
+        SKIP_ARIA_CHECK: ${{ inputs.skip_aria_check }}
+        SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
+        node ${{ github.action_path }}/accessibility/check.js
+
+    - name: Record Accessibility Result
+      if: inputs.skip_accessibility != 'true'
+      shell: bash
+      run: |
+        echo "ACCESSIBILITY_OUTCOME=${{ steps.accessibility.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.accessibility.outcome }}" != "success" ]; then
+          echo "ACCESSIBILITY_FAILED=true" >> $GITHUB_ENV
+        fi
+
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
       id: eslint
@@ -227,6 +327,9 @@ runs:
       shell: bash
       run: |
         echo "ESLINT_OUTCOME=${{ steps.eslint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.eslint.outcome }}" != "success" ]; then
+          echo "ESLINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 7. Stylelint 실행
     - name: Run Stylelint
@@ -249,6 +352,9 @@ runs:
       shell: bash
       run: |
         echo "STYLELINT_OUTCOME=${{ steps.stylelint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.stylelint.outcome }}" != "success" ]; then
+          echo "STYLELINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 8. Markdownlint 실행
     - name: Run Markdownlint
@@ -269,6 +375,9 @@ runs:
       shell: bash
       run: |
         echo "MARKDOWNLINT_OUTCOME=${{ steps.markdownlint.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.markdownlint.outcome }}" != "success" ]; then
+          echo "MARKDOWNLINT_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 9. Misspell 실행
     - name: Run Misspell
@@ -292,146 +401,25 @@ runs:
       shell: bash
       run: |
         echo "MISSPELL_OUTCOME=${{ steps.misspell.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.misspell.outcome }}" != "success" ]; then
+          echo "MISSPELL_FAILED=true" >> $GITHUB_ENV
+        fi
 
-    # 10. 결과 수집
+    # 결과 수집에 AI 및 접근성 결과 포함
     - name: Collect Results
       shell: bash
+      env:
+        SKIP_ESLINT: ${{ inputs.skip_eslint }}
+        SKIP_STYLELINT: ${{ inputs.skip_stylelint }}
+        SKIP_MARKDOWNLINT: ${{ inputs.skip_markdownlint }}
+        SKIP_MISSPELL: ${{ inputs.skip_misspell }}
+        SKIP_AI_REVIEW: ${{ inputs.skip_ai_review }}
+        SKIP_ACCESSIBILITY: ${{ inputs.skip_accessibility }}
+        ESLINT_FLAGS: ${{ inputs.eslint_flags }}
+        STYLELINT_INPUT: ${{ inputs.stylelint_input }}
+        MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
       run: |
-        {
-          echo "# 린트 검사 결과 요약" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 전체 결과" >> $GITHUB_STEP_SUMMARY
-          
-          # ESLint 결과
-          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
-            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
-              echo "### ESLint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### ESLint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx eslint ${{ inputs.eslint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### ESLint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Stylelint 결과
-          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
-            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
-              echo "### Stylelint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Stylelint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx stylelint ${{ inputs.stylelint_input }} --formatter compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Stylelint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Markdownlint 결과
-          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
-            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
-              echo "### Markdownlint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Markdownlint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx markdownlint ${{ inputs.markdownlint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Markdownlint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Misspell 결과
-          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
-            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-              echo "### Misspell: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Misspell: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              misspell . >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Misspell: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # 전체 상태 추가
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 상세 정보" >> $GITHUB_STEP_SUMMARY
-          echo "* 워크플로우 실행: [링크](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-          echo "* 커밋: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "* PR: [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})" >> $GITHUB_STEP_SUMMARY
-          fi
-        }
-        
-        # Slack 통지를 위한 환경변수 설정
-        {
-          echo "LINT_RESULTS<<EOF"
-          echo "린트 검사 결과 요약:"
-          echo "-------------------"
-          
-          # ESLint 결과
-          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
-            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
-              echo "ESLint: ✅ 통과"
-            else
-              echo "ESLint: ❌ 실패"
-            fi
-          else
-            echo "ESLint: ⏭️ 스킵됨"
-          fi
-          
-          # Stylelint 결과
-          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
-            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
-              echo "Stylelint: ✅ 통과"
-            else
-              echo "Stylelint: ❌ 실패"
-            fi
-          else
-            echo "Stylelint: ⏭️ 스킵됨"
-          fi
-          
-          # Markdownlint 결과
-          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
-            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
-              echo "Markdownlint: ✅ 통과"
-            else
-              echo "Markdownlint: ❌ 실패"
-            fi
-          else
-            echo "Markdownlint: ⏭️ 스킵됨"
-          fi
-          
-          # Misspell 결과
-          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
-            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-              echo "Misspell: ✅ 통과"
-            else
-              echo "Misspell: ❌ 실패"
-            fi
-          else
-            echo "Misspell: ⏭️ 스킵됨"
-          fi
-          
-          # 전체 결과 상태
-          echo "-------------------"
-          if [ "${{ env.ESLINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.STYLELINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ] && \
-             [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-            echo "전체 상태: ✅ 모든 검사 통과"
-          else
-            echo "전체 상태: ❌ 일부 검사 실패"
-          fi
-          
-          echo "EOF"
-        } >> $GITHUB_ENV
+        node ${{ github.action_path }}/collect-results.js
 
     # 11. Slack 통지
     - name: Send Slack Notification
@@ -442,22 +430,6 @@ runs:
         SLACK_CHANNEL: ${{ inputs.slack_channel }}
         SLACK_USERNAME: ${{ inputs.slack_username }}
         SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
-        LINT_RESULTS: ${{ env.LINT_RESULTS }}
+        SLACK_TOKEN: ${{ inputs.slack_token }}
       run: |
         node ${{ github.action_path }}/notify/slack.js
-
-    # 12. 이메일 통지
-    - name: Send Email Notification
-      if: inputs.notification_type == 'email' || inputs.notification_type == 'both'
-      shell: bash
-      env:
-        EMAIL_SERVER_TYPE: ${{ inputs.email_server_type }}
-        EMAIL_HOST: ${{ inputs.email_host }}
-        EMAIL_PORT: ${{ inputs.email_port }}
-        EMAIL_USERNAME: ${{ inputs.email_username }}
-        EMAIL_PASSWORD: ${{ inputs.email_password }}
-        EMAIL_FROM: ${{ inputs.email_from }}
-        EMAIL_TO: ${{ inputs.email_to }}
-        LINT_RESULTS: ${{ env.LINT_RESULTS }}
-      run: |
-        node ${{ github.action_path }}/notify/email.js

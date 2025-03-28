@@ -6,7 +6,10 @@ const { execSync } = require('child_process');
 const dependencies = require('./configs/dependencies.json');
 
 function getDependencies(inputs) {
-  const packages = [];
+  const packages = {
+    dependencies: [],
+    devDependencies: []
+  };
   
   // ESLint 관련 패키지
   if (inputs.skip_eslint !== 'true') {
@@ -14,7 +17,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.eslint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -26,7 +29,7 @@ function getDependencies(inputs) {
     Object.entries(dependencies.stylelint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -38,7 +41,31 @@ function getDependencies(inputs) {
     Object.entries(dependencies.markdownlint).forEach(([category, deps]) => {
       console.log(`  [${category}]`);
       Object.entries(deps).forEach(([pkg, version]) => {
-        packages.push(`${pkg}@${version}`);
+        packages.devDependencies.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  // AI 코드 리뷰 관련 패키지
+  if (inputs.skip_ai_review !== 'true') {
+    console.log('\n📦 AI 코드 리뷰 패키지 추가 중...');
+    Object.entries(dependencies['ai-review']).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.dependencies.push(`${pkg}@${version}`);
+        console.log(`    - ${pkg}@${version}`);
+      });
+    });
+  }
+
+  // 접근성 검사 관련 패키지
+  if (inputs.skip_accessibility !== 'true') {
+    console.log('\n📦 접근성 검사 패키지 추가 중...');
+    Object.entries(dependencies.accessibility).forEach(([category, deps]) => {
+      console.log(`  [${category}]`);
+      Object.entries(deps).forEach(([pkg, version]) => {
+        packages.dependencies.push(`${pkg}@${version}`);
         console.log(`    - ${pkg}@${version}`);
       });
     });
@@ -60,10 +87,11 @@ function setupWorkspace(inputs) {
       name: 'lint-tools',
       version: '1.0.0',
       private: true,
-      type: "module",
       engines: {
         node: ">=16"
-      }
+      },
+      dependencies: {},
+      devDependencies: {}
     };
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
@@ -93,13 +121,20 @@ function setupWorkspace(inputs) {
       fs.rmSync('node_modules', { recursive: true, force: true });
     }
     
-    // 패키지 설치 (정확한 버전으로)
-    const installCmd = `npm install --no-package-lock --no-save ${packages.join(' ')}`;
-    console.log('실행 명령어:', installCmd);
-    
-    execSync(installCmd, {
-      stdio: 'inherit'
-    });
+    // 의존성 패키지 설치
+    if (packages.dependencies.length > 0) {
+      const installDepsCmd = `npm install --save --legacy-peer-deps ${packages.dependencies.join(' ')}`;
+      console.log('의존성 패키지 설치 명령어:', installDepsCmd);
+      execSync(installDepsCmd, { stdio: 'inherit' });
+    }
+
+    // 개발 의존성 패키지 설치
+    if (packages.devDependencies.length > 0) {
+      const installDevDepsCmd = `npm install --save-dev --legacy-peer-deps ${packages.devDependencies.join(' ')}`;
+      console.log('개발 의존성 패키지 설치 명령어:', installDevDepsCmd);
+      execSync(installDevDepsCmd, { stdio: 'inherit' });
+    }
+
     console.log('✓ 패키지 설치 완료');
     
     // 설치된 버전 확인
@@ -130,7 +165,9 @@ console.log('\n=== 설정값 ===');
 const inputs = {
   skip_eslint: process.env.INPUT_SKIP_ESLINT,
   skip_stylelint: process.env.INPUT_SKIP_STYLELINT,
-  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT
+  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT,
+  skip_ai_review: process.env.INPUT_SKIP_AI_REVIEW,
+  skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY
 };
 
 Object.entries(inputs).forEach(([key, value]) => {
