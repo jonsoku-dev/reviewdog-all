@@ -12,10 +12,20 @@ function createConfig(tempDir, inputs) {
     const eslintConfig = inputs.eslint_config_path
       ? JSON.parse(fs.readFileSync(inputs.eslint_config_path, 'utf8'))
       : {
+          root: true,
+          env: {
+            browser: true,
+            node: true,
+            es2021: true
+          },
           extends: [
             'eslint:recommended',
-            'plugin:prettier/recommended'  // Prettier 규칙을 ESLint에 통합
+            'plugin:prettier/recommended'
           ],
+          parserOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module'
+          },
           plugins: ['prettier'],
           rules: {
             'prettier/prettier': 'error'
@@ -31,6 +41,20 @@ function createConfig(tempDir, inputs) {
     fs.writeFileSync(
       path.join(tempDir, '.eslintrc.json'),
       JSON.stringify(eslintConfig, null, 2)
+    );
+
+    // .eslintignore 파일 생성
+    const eslintIgnore = `
+node_modules/
+dist/
+build/
+coverage/
+*.min.js
+    `.trim();
+
+    fs.writeFileSync(
+      path.join(tempDir, '.eslintignore'),
+      eslintIgnore
     );
   }
 

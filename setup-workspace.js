@@ -35,7 +35,7 @@ function setupWorkspace(inputs) {
   
   if (inputs.skip_eslint !== 'true') {
     packages.push(
-      'eslint@latest',
+      'eslint@^8.0.0',
       'prettier@latest',  // ESLint에서 Prettier를 사용하기 위해 필요
       'eslint-config-prettier',
       'eslint-plugin-prettier'
