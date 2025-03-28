@@ -87,7 +87,6 @@ function setupWorkspace(inputs) {
       name: 'lint-tools',
       version: '1.0.0',
       private: true,
-      type: "module",
       engines: {
         node: ">=16"
       },
@@ -124,14 +123,14 @@ function setupWorkspace(inputs) {
     
     // 의존성 패키지 설치
     if (packages.dependencies.length > 0) {
-      const installDepsCmd = `npm install --save ${packages.dependencies.join(' ')}`;
+      const installDepsCmd = `npm install --save --legacy-peer-deps ${packages.dependencies.join(' ')}`;
       console.log('의존성 패키지 설치 명령어:', installDepsCmd);
       execSync(installDepsCmd, { stdio: 'inherit' });
     }
 
     // 개발 의존성 패키지 설치
     if (packages.devDependencies.length > 0) {
-      const installDevDepsCmd = `npm install --save-dev ${packages.devDependencies.join(' ')}`;
+      const installDevDepsCmd = `npm install --save-dev --legacy-peer-deps ${packages.devDependencies.join(' ')}`;
       console.log('개발 의존성 패키지 설치 명령어:', installDevDepsCmd);
       execSync(installDevDepsCmd, { stdio: 'inherit' });
     }
