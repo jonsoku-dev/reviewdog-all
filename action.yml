@@ -265,11 +265,21 @@ runs:
       shell: bash
       continue-on-error: true
       env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         AI_REVIEW_LEVEL: ${{ inputs.ai_review_level }}
         AI_SUGGESTIONS_LIMIT: ${{ inputs.ai_suggestions_limit }}
+        GITHUB_CONTEXT: ${{ toJSON(github) }}
       working-directory: ${{ inputs.workdir }}
       run: |
+        if [ -z "$OPENAI_API_KEY" ]; then
+          echo "::error::OpenAI API 키가 설정되지 않았습니다."
+          exit 1
+        fi
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "::error::GitHub 토큰이 설정되지 않았습니다."
+          exit 1
+        fi
         export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
         node ${{ github.action_path }}/ai/code-review.js
 

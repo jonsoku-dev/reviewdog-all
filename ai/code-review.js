@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const { getOctokit } = require('@actions/github');
+const { getOctokit, context } = require('@actions/github');
 const core = require('@actions/core');
 const fs = require('fs');
 const path = require('path');
@@ -7,6 +7,7 @@ const path = require('path');
 async function runAICodeReview() {
   try {
     const openaiApiKey = process.env.OPENAI_API_KEY;
+    const githubToken = process.env.GITHUB_TOKEN;
     const reviewLevel = process.env.AI_REVIEW_LEVEL;
     const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT);
 
@@ -14,13 +15,16 @@ async function runAICodeReview() {
       throw new Error('OpenAI API 키가 필요합니다.');
     }
 
+    if (!githubToken) {
+      throw new Error('GitHub 토큰이 필요합니다.');
+    }
+
     const openai = new OpenAI({
       apiKey: openaiApiKey,
     });
 
     // GitHub API 클라이언트 설정
-    const octokit = getOctokit(process.env.GITHUB_TOKEN);
-    const context = JSON.parse(process.env.GITHUB_CONTEXT);
+    const octokit = getOctokit(githubToken);
 
     // PR의 변경된 파일 가져오기
     const { data: changedFiles } = await octokit.rest.pulls.listFiles({
@@ -60,7 +64,7 @@ async function runAICodeReview() {
     }
 
     // 리뷰 결과를 PR 코멘트로 작성
-    await createPRComment(octokit, context, reviews);
+    await createPRComment(octokit, reviews);
 
     core.setOutput('review_count', reviews.length);
     
@@ -82,7 +86,7 @@ function generateReviewPrompt(code, level) {
   return `${basePrompt}\n${levelSpecificPrompts[level]}\n\n${code}`;
 }
 
-async function createPRComment(octokit, context, reviews) {
+async function createPRComment(octokit, reviews) {
   const comment = formatReviewComment(reviews);
   
   await octokit.rest.issues.createComment({
