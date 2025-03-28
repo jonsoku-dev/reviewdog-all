@@ -49,11 +49,11 @@ async function sendSlackNotification() {
         fields: [
           {
             type: "mrkdwn",
-            text: `*저장소*\n${results.repository}`
+            text: `*저장소*\n<${results.repository_url}|${results.repository}>`
           },
           {
             type: "mrkdwn",
-            text: `*커밋*\n\`${results.commit}\``
+            text: `*커밋*\n<${results.commit_url}|\`${results.commit}\`>`
           }
         ]
       }
@@ -74,6 +74,23 @@ async function sendSlackNotification() {
     ]
   };
 
+  // PR 정보가 있는 경우 추가
+  if (results.pr) {
+    message.blocks.push({
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*PR*\n<${results.pr.url}|#${results.pr.number}>`
+        },
+        {
+          type: "mrkdwn",
+          text: `*브랜치*\n\`${results.pr.head}\` → \`${results.pr.base}\``
+        }
+      ]
+    });
+  }
+
   // 각 린터별 결과 추가
   results.results.forEach(result => {
     const statusEmoji = {
@@ -82,17 +99,24 @@ async function sendSlackNotification() {
       skipped: '⏭️'
     }[result.status];
 
+    const statusText = result.status === 'failed' ? '실패' : result.status === 'success' ? '통과' : '스킵됨';
+    let text = `${statusEmoji} *${result.name}*: ${statusText}`;
+    
+    if (result.details) {
+      text += `\n\`\`\`${result.details}\`\`\``;
+    }
+
     message.attachments[0].blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `${statusEmoji} *${result.name}*: ${result.status === 'failed' ? '실패' : result.status === 'success' ? '통과' : '스킵됨'}`
+        text: text
       }
     });
   });
 
   // 실패한 경우 추가 정보
-  if (results.status === 'failed') {
+  if (results.status === 'failed' && results.failed_linters.length > 0) {
     message.attachments[0].blocks.push(
       {
         type: "divider"
@@ -101,10 +125,22 @@ async function sendSlackNotification() {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*실패한 린터:*\n${results.failed_linters.join(', ')}`
+          text: "*실패한 린터 상세:*"
         }
       }
     );
+
+    results.failed_linters.forEach(linter => {
+      if (linter.details) {
+        message.attachments[0].blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${linter.name}*:\n\`\`\`${linter.details}\`\`\``
+          }
+        });
+      }
+    });
   }
 
   // 워크플로우 링크 추가
@@ -117,7 +153,7 @@ async function sendSlackNotification() {
       elements: [
         {
           type: "mrkdwn",
-          text: `자세한 내용은 <${results.workflow_url}|여기>에서 확인하실 수 있습니다.`
+          text: `자세한 내용은 <${results.workflow_url}|워크플로우>에서 확인하실 수 있습니다.`
         }
       ]
     }
