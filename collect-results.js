@@ -112,29 +112,27 @@ function collectResults() {
     }
 
     let details = '';
-    if (linter.failed) {
-      if (linter.resultFile && fs.existsSync(linter.resultFile)) {
-        try {
-          const results = JSON.parse(fs.readFileSync(linter.resultFile, 'utf8'));
-          if (linter.name === '접근성 검사') {
-            details = `${results.summary.totalViolations}개의 위반사항`;
-          } else if (linter.name === 'AI 코드 리뷰') {
-            details = `${results.suggestions?.length || 0}개의 제안사항`;
-          }
-        } catch (error) {
-          details = '결과 파일 읽기 실패';
+    if (linter.resultFile && fs.existsSync(linter.resultFile)) {
+      try {
+        const results = JSON.parse(fs.readFileSync(linter.resultFile, 'utf8'));
+        if (linter.name === '접근성 검사') {
+          details = `${results.summary.totalViolations}개의 위반사항`;
+        } else if (linter.name === 'AI 코드 리뷰') {
+          details = `${results.suggestions?.length || 0}개의 제안사항`;
         }
-      } else if (linter.command) {
-        try {
-          const { execSync } = require('child_process');
-          const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-          if (result.trim()) {
-            details = result.split('\n')[0];
-          }
-        } catch (error) {
-          if (error.stdout) {
-            details = error.stdout.split('\n')[0];
-          }
+      } catch (error) {
+        details = '결과 파일 읽기 실패';
+      }
+    } else if (linter.command) {
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        if (result.trim()) {
+          details = result.split('\n')[0];
+        }
+      } catch (error) {
+        if (error.stdout) {
+          details = error.stdout.split('\n')[0];
         }
       }
     }
@@ -144,9 +142,78 @@ function collectResults() {
 
   summary += '\n';
 
+  // 모든 린터의 상세 결과 표시
+  summary += '## 상세 검사 결과\n\n';
+  
+  linters.forEach(linter => {
+    if (linter.name === 'AI 코드 리뷰') {
+      try {
+        // AI 리뷰 결과 파일 읽기 시도
+        let aiResults;
+        if (fs.existsSync('ai-review-result.json')) {
+          aiResults = JSON.parse(fs.readFileSync('ai-review-result.json', 'utf8'));
+          summary += `### ${linter.name} ${linter.skip ? '(스킵됨)' : linter.failed ? '(실패)' : '(통과)'}\n\n`;
+          summary += `- 검토된 파일: ${aiResults.files_reviewed}개\n`;
+          summary += `- 발견된 이슈: ${aiResults.total_issues}개\n\n`;
+          
+          if (aiResults.reviews && aiResults.reviews.length > 0) {
+            aiResults.reviews.forEach(review => {
+              summary += `#### 📝 ${review.file}\n\n`;
+              review.suggestions.forEach((suggestion, index) => {
+                summary += `${index + 1}. ${suggestion}\n`;
+              });
+              summary += '\n';
+            });
+          }
+        } else if (fs.existsSync('ai-review-result.md')) {
+          // JSON이 없는 경우 마크다운 파일 사용
+          const mdContent = fs.readFileSync('ai-review-result.md', 'utf8');
+          summary += `### ${linter.name} ${linter.skip ? '(스킵됨)' : linter.failed ? '(실패)' : '(통과)'}\n\n`;
+          summary += mdContent + '\n';
+        }
+      } catch (error) {
+        summary += `### ${linter.name}\n\n`;
+        summary += `결과 파일 읽기 실패: ${error.message}\n\n`;
+      }
+    } else if (linter.resultFile && fs.existsSync(linter.resultFile)) {
+      try {
+        const results = JSON.parse(fs.readFileSync(linter.resultFile, 'utf8'));
+        summary += `### ${linter.name} ${linter.skip ? '(스킵됨)' : linter.failed ? '(실패)' : '(통과)'}\n\n`;
+        
+        if (linter.name === '접근성 검사') {
+          results.details.forEach(result => {
+            if (result.violations.length > 0) {
+              summary += `#### ${result.file}\n\n`;
+              result.violations.forEach(violation => {
+                summary += `- ${violation.help}: ${violation.nodes.length}개 요소\n`;
+              });
+              summary += '\n';
+            }
+          });
+        }
+      } catch (error) {
+        summary += `결과 파일 읽기 실패: ${error.message}\n\n`;
+      }
+    } else if (linter.command && !linter.skip) {
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        if (result.trim()) {
+          summary += `### ${linter.name} ${linter.failed ? '(실패)' : '(통과)'}\n\n\`\`\`diff\n${result}\n\`\`\`\n\n`;
+        } else {
+          summary += `### ${linter.name} (통과)\n\n문제가 발견되지 않았습니다.\n\n`;
+        }
+      } catch (error) {
+        if (error.stdout) {
+          summary += `### ${linter.name} (실패)\n\n\`\`\`diff\n${error.stdout}\n\`\`\`\n\n`;
+        }
+      }
+    }
+  });
+
   // 최종 결과
   if (hasFailures) {
-    summary += '## ❌ 최종 결과\n\n';
+    summary += '## ❌ 실패한 검사 요약\n\n';
     summary += '다음 검사에서 문제가 발견되었습니다:\n\n';
     failedLinters.forEach(linter => {
       if (linter.resultFile && fs.existsSync(linter.resultFile)) {
