@@ -56,3 +56,23 @@ jobs:
           level: error
           fail_level: error
           workdir: ./testdata/
+
+  test-no-config:
+    name: Lint Check (No Config)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: added
+          level: info
+          fail_level: warning
+          workdir: ./testdata/no-config/
+          eslint_flags: "**/*.{js,jsx,ts,tsx}"
+          stylelint_input: "**/*.css"
+          markdownlint_flags: "**/*.md"
