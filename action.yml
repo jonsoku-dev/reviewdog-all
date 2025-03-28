@@ -308,58 +308,13 @@ runs:
     # 10. 결과 수집
     - name: Collect Results
       shell: bash
+      env:
+        SKIP_ESLINT: ${{ inputs.skip_eslint }}
+        SKIP_STYLELINT: ${{ inputs.skip_stylelint }}
+        SKIP_MARKDOWNLINT: ${{ inputs.skip_markdownlint }}
+        SKIP_MISSPELL: ${{ inputs.skip_misspell }}
+        ESLINT_FLAGS: ${{ inputs.eslint_flags }}
+        STYLELINT_INPUT: ${{ inputs.stylelint_input }}
+        MARKDOWNLINT_FLAGS: ${{ inputs.markdownlint_flags }}
       run: |
-        {
-          echo "# 린트 검사 결과 요약" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 전체 결과" >> $GITHUB_STEP_SUMMARY
-          
-          # ESLint 결과
-          if [ "${{ inputs.skip_eslint }}" != "true" ]; then
-            if [ "${{ env.ESLINT_OUTCOME }}" == "success" ]; then
-              echo "### ESLint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### ESLint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx eslint ${{ inputs.eslint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### ESLint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Stylelint 결과
-          if [ "${{ inputs.skip_stylelint }}" != "true" ]; then
-            if [ "${{ env.STYLELINT_OUTCOME }}" == "success" ]; then
-              echo "### Stylelint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Stylelint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx stylelint ${{ inputs.stylelint_input }} --formatter compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Stylelint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Markdownlint 결과
-          if [ "${{ inputs.skip_markdownlint }}" != "true" ]; then
-            if [ "${{ env.MARKDOWNLINT_OUTCOME }}" == "success" ]; then
-              echo "### Markdownlint: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Markdownlint: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-              npx markdownlint ${{ inputs.markdownlint_flags }} --format compact >> $GITHUB_STEP_SUMMARY 2>&1 || true
-              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### Markdownlint: ⏭️ 스킵됨" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Misspell 결과
-          if [ "${{ inputs.skip_misspell }}" != "true" ]; then
-            if [ "${{ env.MISSPELL_OUTCOME }}" == "success" ]; then
-              echo "### Misspell: ✅ 통과" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "### Misspell: ❌ 실패" >> $GITHUB_STEP_SUMMARY
-              echo "\`\`\`
+        node ${{ github.action_path }}/collect-results.js
