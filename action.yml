@@ -175,7 +175,7 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         stylelint_input: ${{ inputs.stylelint_input }}
-        workdir: ${{ inputs.workdir }}
+        packages: 'stylelint-config-standard'
 
     # 8. Markdownlint 실행
     - name: Run Markdownlint
@@ -188,7 +188,6 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
-        workdir: ${{ inputs.workdir }}
 
     # 9. Misspell 실행
     - name: Run Misspell
@@ -202,7 +201,8 @@ runs:
         fail_level: ${{ inputs.fail_level }}
         locale: ${{ inputs.misspell_locale }}
         ignore: ${{ inputs.misspell_ignore }}
-        workdir: ${{ inputs.workdir }}
+        pattern: "**/*"
+        path: "."
 
     # 10. 정리
     - name: Cleanup
