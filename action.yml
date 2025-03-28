@@ -267,6 +267,11 @@ runs:
         INPUT_SKIP_MARKDOWNLINT: ${{ inputs.skip_markdownlint }}
         INPUT_SKIP_AI_REVIEW: ${{ inputs.skip_ai_review }}
         INPUT_SKIP_ACCESSIBILITY: ${{ inputs.skip_accessibility }}
+        INPUT_ESLINT_CONFIG_PATH: ${{ inputs.eslint_config_path }}
+        INPUT_STYLELINT_CONFIG_PATH: ${{ inputs.stylelint_config_path }}
+        INPUT_MARKDOWNLINT_CONFIG_PATH: ${{ inputs.markdownlint_config_path }}
+        INPUT_AXE_CONFIG_PATH: ${{ inputs.axe_config_path }}
+        INPUT_WORKDIR: ${{ inputs.workdir }}
       run: |
         node ${{ github.action_path }}/setup-configs.js
 
