@@ -290,6 +290,7 @@ runs:
       if: inputs.skip_accessibility != 'true'
       id: accessibility
       shell: bash
+      continue-on-error: true
       env:
         ACCESSIBILITY_LEVEL: ${{ inputs.accessibility_level }}
         COLOR_CONTRAST_RATIO: ${{ inputs.color_contrast_ratio }}
@@ -297,25 +298,17 @@ runs:
         SKIP_ALT_TEXT_CHECK: ${{ inputs.skip_alt_text_check }}
       working-directory: ${{ inputs.workdir }}
       run: |
-        echo "=== 접근성 검사 디버그 정보 ==="
-        echo "현재 디렉토리: $(pwd)"
-        echo "상위 디렉토리: $(cd .. && pwd)"
-        echo "node_modules 위치 확인:"
-        ls -la node_modules || echo "node_modules not found in current directory"
-        ls -la ../node_modules || echo "node_modules not found in parent directory"
-        echo "jsdom 모듈 확인:"
-        find . -name "jsdom" -type d || echo "jsdom not found in current directory"
-        find .. -name "jsdom" -type d || echo "jsdom not found in parent directory"
-        echo "package.json 내용:"
-        cat package.json || echo "package.json not found"
-        echo "NODE_PATH 환경변수:"
-        echo $NODE_PATH
-        echo "=== 모듈 해석 테스트 ==="
-        # NODE_PATH를 현재 디렉토리와 상위 디렉토리의 node_modules를 포함하도록 설정
         export NODE_PATH="${NODE_PATH:+$NODE_PATH:}$(pwd)/node_modules:$(pwd)/../node_modules"
-        node -e "try { require.resolve('jsdom'); console.log('jsdom 모듈 찾음:', require.resolve('jsdom')); } catch(e) { console.log('jsdom 모듈을 찾을 수 없음:', e.message); }"
-        echo "=== 접근성 검사 실행 ==="
         node ${{ github.action_path }}/accessibility/check.js
+
+    - name: Record Accessibility Result
+      if: inputs.skip_accessibility != 'true'
+      shell: bash
+      run: |
+        echo "ACCESSIBILITY_OUTCOME=${{ steps.accessibility.outcome }}" >> $GITHUB_ENV
+        if [ "${{ steps.accessibility.outcome }}" != "success" ]; then
+          echo "ACCESSIBILITY_FAILED=true" >> $GITHUB_ENV
+        fi
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
