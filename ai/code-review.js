@@ -1,4 +1,4 @@
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 const { getOctokit } = require('@actions/github');
 const core = require('@actions/core');
 const fs = require('fs');
@@ -14,10 +14,9 @@ async function runAICodeReview() {
       throw new Error('OpenAI API 키가 필요합니다.');
     }
 
-    const configuration = new Configuration({
+    const openai = new OpenAI({
       apiKey: openaiApiKey,
     });
-    const openai = new OpenAIApi(configuration);
 
     // GitHub API 클라이언트 설정
     const octokit = getOctokit(process.env.GITHUB_TOKEN);
@@ -41,8 +40,8 @@ async function runAICodeReview() {
       const prompt = generateReviewPrompt(fileContent, reviewLevel);
       
       // OpenAI API 호출
-      const response = await openai.createChatCompletion({
-        model: 'gpt-4',
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
           { role: 'user', content: prompt }
@@ -51,7 +50,7 @@ async function runAICodeReview() {
         temperature: 0.7,
       });
 
-      const suggestions = response.data.choices[0].message.content;
+      const suggestions = response.choices[0].message.content;
       
       // 리뷰 결과 저장
       reviews.push({
