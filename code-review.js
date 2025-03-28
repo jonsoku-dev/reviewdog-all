@@ -16,15 +16,7 @@ async function runAICodeReview() {
       PATH: process.env.PATH
     });
 
-    // GitHub Actions의 core.getInput() 사용 시도
-    try {
-      const openaiApiKeyFromCore = core.getInput('openai_api_key');
-      console.log('core.getInput("openai_api_key"):', openaiApiKeyFromCore ? '설정됨' : '설정되지 않음');
-    } catch (e) {
-      console.log('core.getInput() 에러:', e.message);
-    }
-
-    const openaiApiKey = process.env.OPENAI_API_KEY || core.getInput('openai_api_key');
+    const openaiApiKey = process.env.OPENAI_API_KEY;
     // const githubToken = process.env.GITHUB_TOKEN;
     const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
     const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT || '5');
@@ -157,6 +149,7 @@ function formatReviewComment(reviews) {
     comment += `### 📝 ${review.file}\n\n`;
     review.suggestions.forEach((suggestion, index) => {
       comment += `${index + 1}. ${suggestion}\n`;
+      console.log(`${index + 1}. ${suggestion}`);
     });
     comment += '\n';
   });
