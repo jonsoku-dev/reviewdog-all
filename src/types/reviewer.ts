@@ -9,6 +9,7 @@ export interface ReviewResult {
 export interface ReviewerOptions {
   workdir?: string;
   // AI 리뷰어 옵션
+  apiKey?: string;
   model?: string;
   maxTokens?: number;
   temperature?: number;

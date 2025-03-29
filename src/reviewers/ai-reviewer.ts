@@ -12,7 +12,7 @@ export default class AIReviewer implements Reviewer {
 
   constructor(options: ReviewerOptions = {}) {
     this.options = options;
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = this.options.apiKey || process.env.AI_REVIEWER_API_KEY;
     if (!apiKey) {
       throw new Error('OpenAI API 키가 설정되지 않았습니다.');
     }
@@ -20,7 +20,7 @@ export default class AIReviewer implements Reviewer {
   }
 
   async isEnabled(): Promise<boolean> {
-    return process.env.SKIP_AI_REVIEW !== 'true' && !!process.env.OPENAI_API_KEY;
+    return process.env.SKIP_AI_REVIEW !== 'true' && !!(this.options.apiKey || process.env.AI_REVIEWER_API_KEY);
   }
 
   async review(files: string[]): Promise<ReviewResult[]> {
