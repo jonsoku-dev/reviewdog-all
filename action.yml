@@ -45,7 +45,7 @@ inputs:
   ai_reviewer_model:
     description: "사용할 AI 모델"
     required: false
-    default: "gpt-4o"
+    default: "gpt-4"
     
   ai_reviewer_max_tokens:
     description: "최대 토큰 수"

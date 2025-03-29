@@ -141,26 +141,19 @@ export default class AIReviewer implements Reviewer {
     try {
       if (this._options.debug) {
         console.log('OpenAI API 호출 시작...');
-        console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
-        console.log(`출력 언어: ${this._options.language || 'ko'}`);
+        console.log(`사용 모델: ${this._options.model || 'gpt-4'}`);
       }
 
-      const systemPrompt = this._options.language === 'en' 
-        ? 'You are a professional code reviewer. Please suggest improvements for the code in terms of quality, readability, performance, and security aspects.'
-        : '당신은 전문적인 코드 리뷰어입니다. 코드의 품질, 가독성, 성능, 보안 측면에서 개선사항을 제안해주세요.';
-
       const response = await this.openai.chat.completions.create({
-        model: this._options.model || 'gpt-4o',
+        model: this._options.model || 'gpt-4',
         messages: [
           {
             role: 'system',
-            content: systemPrompt
+            content: '당신은 전문적인 코드 리뷰어입니다. 코드의 품질, 가독성, 성능, 보안 측면에서 개선사항을 제안해주세요.'
           },
           {
             role: 'user',
-            content: this._options.language === 'en'
-              ? `Please review the following code and suggest improvements:\n\n${code}`
-              : `다음 코드를 리뷰하고 개선사항을 제안해주세요:\n\n${code}`
+            content: `다음 코드를 리뷰하고 개선사항을 제안해주세요:\n\n${code}`
           }
         ],
         max_tokens: this._options.maxTokens || 1000,

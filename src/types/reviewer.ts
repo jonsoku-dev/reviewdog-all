@@ -19,7 +19,6 @@ export interface ReviewerOptions {
   temperature?: number;
   filePatterns?: string[];
   excludePatterns?: string[];
-  language?: 'ko' | 'en' | 'ja';  // 출력 언어 설정 (한국어 또는 영어)
 }
 
 export interface Reviewer {

@@ -41,7 +41,6 @@ export class ReviewerManager {
           enabled: process.env[`${reviewerType.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
           apiKey: process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_KEY`],
           model: process.env[`${reviewerType.toUpperCase()}_REVIEWER_MODEL`],
-          language: (process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_LANGUAGE`] || 'ko') as 'ko' | 'en' | 'ja',
           maxTokens: parseInt(process.env[`${reviewerType.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
           temperature: parseFloat(process.env[`${reviewerType.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
           filePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
