@@ -153,13 +153,13 @@ runs:
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
-        cp ${{ github.action_path }}/src/run-reviews.ts ${{ github.action_path }}/${{ inputs.workdir }}/run-reviews.ts
-        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/run-reviews.ts
+        cp -r ${{ github.action_path }}/src ${{ github.action_path }}/${{ inputs.workdir }}/src
+        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/src/run-reviews.ts
 
     # 5. 리뷰 결과 보고
     - name: Report results
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
-        cp ${{ github.action_path }}/src/report-results.ts ${{ github.action_path }}/${{ inputs.workdir }}/report-results.ts
-        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/report-results.ts
+        cp -r ${{ github.action_path }}/src ${{ github.action_path }}/${{ inputs.workdir }}/src
+        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/src/report-results.ts
