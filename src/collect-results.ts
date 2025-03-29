@@ -1,7 +1,44 @@
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
-function collectResults() {
+interface LinterResult {
+  name: string;
+  skip: boolean;
+  outcome: string | undefined;
+  failed: boolean;
+  flags?: string;
+  command?: string;
+  resultFile?: string;
+  details?: string | null;
+}
+
+interface PullRequestInfo {
+  number: number;
+  url: string;
+  head: string;
+  base: string;
+}
+
+interface LintResults {
+  status: 'success' | 'failed';
+  repository: string;
+  repository_url: string;
+  commit: string;
+  commit_url: string;
+  workflow_url: string;
+  pr?: PullRequestInfo;
+  results: Array<{
+    name: string;
+    status: 'success' | 'failed' | 'skipped';
+    details: string | null;
+  }>;
+  failed_linters: Array<{
+    name: string;
+    details: string | null;
+  }>;
+}
+
+function collectResults(): void {
   const {
     GITHUB_STEP_SUMMARY,
     GITHUB_SERVER_URL,
@@ -12,8 +49,12 @@ function collectResults() {
     GITHUB_EVENT_PATH,
   } = process.env;
 
+  if (!GITHUB_STEP_SUMMARY || !GITHUB_REPOSITORY || !GITHUB_SHA || !GITHUB_RUN_ID) {
+    throw new Error('필수 환경 변수가 설정되지 않았습니다.');
+  }
+
   // 린터 결과 수집
-  const linters = [
+  const linters: LinterResult[] = [
     {
       name: 'ESLint',
       skip: process.env.SKIP_ESLINT === 'true',
@@ -80,7 +121,7 @@ function collectResults() {
   summary += `| 저장소 | [\`${GITHUB_REPOSITORY}\`](${repoUrl}) |\n`;
   
   // PR 또는 브랜치 정보
-  if (GITHUB_EVENT_NAME === 'pull_request') {
+  if (GITHUB_EVENT_NAME === 'pull_request' && GITHUB_EVENT_PATH) {
     const event = JSON.parse(fs.readFileSync(GITHUB_EVENT_PATH, 'utf8'));
     const prUrl = `${repoUrl}/pull/${event.pull_request.number}`;
     summary += `| PR | [#${event.pull_request.number}](${prUrl}) |\n`;
@@ -99,7 +140,8 @@ function collectResults() {
 
   // 각 린터의 결과 추가
   linters.forEach(linter => {
-    let status, statusEmoji;
+    let status: string;
+    let statusEmoji: string;
     if (linter.skip) {
       status = '스킵됨';
       statusEmoji = '⏭️';
@@ -131,7 +173,7 @@ function collectResults() {
           if (result.trim()) {
             details = result.split('\n')[0];
           }
-        } catch (error) {
+        } catch (error: any) {
           if (error.stdout) {
             details = error.stdout.split('\n')[0];
           }
@@ -155,10 +197,10 @@ function collectResults() {
           summary += `### ${linter.name}\n\n`;
           
           if (linter.name === '접근성 검사') {
-            results.details.forEach(result => {
+            results.details.forEach((result: any) => {
               if (result.violations.length > 0) {
                 summary += `#### ${result.file}\n\n`;
-                result.violations.forEach(violation => {
+                result.violations.forEach((violation: any) => {
                   summary += `- ${violation.help}: ${violation.nodes.length}개 요소\n`;
                 });
                 summary += '\n';
@@ -166,7 +208,7 @@ function collectResults() {
             });
           } else if (linter.name === 'AI 코드 리뷰') {
             if (results.suggestions?.length > 0) {
-              results.suggestions.forEach((suggestion, index) => {
+              results.suggestions.forEach((suggestion: any, index: number) => {
                 summary += `${index + 1}. ${suggestion.message}\n`;
                 if (suggestion.file) {
                   summary += `   파일: \`${suggestion.file}\`\n`;
@@ -175,7 +217,7 @@ function collectResults() {
               });
             }
           }
-        } catch (error) {
+        } catch (error: any) {
           summary += `결과 파일 읽기 실패: ${error.message}\n\n`;
         }
       } else if (linter.command) {
@@ -185,7 +227,7 @@ function collectResults() {
           if (result.trim()) {
             summary += `### ${linter.name}\n\n\`\`\`diff\n${result}\n\`\`\`\n\n`;
           }
-        } catch (error) {
+        } catch (error: any) {
           if (error.stdout) {
             summary += `### ${linter.name}\n\n\`\`\`diff\n${error.stdout}\n\`\`\`\n\n`;
           }
@@ -198,7 +240,7 @@ function collectResults() {
   fs.writeFileSync(GITHUB_STEP_SUMMARY, summary);
 
   // Slack 통지를 위한 환경 변수 설정
-  const lintResults = {
+  const lintResults: LintResults = {
     status: hasFailures ? 'failed' : 'success',
     repository: GITHUB_REPOSITORY,
     repository_url: repoUrl,
@@ -216,7 +258,7 @@ function collectResults() {
     }))
   };
 
-  if (GITHUB_EVENT_NAME === 'pull_request') {
+  if (GITHUB_EVENT_NAME === 'pull_request' && GITHUB_EVENT_PATH) {
     const event = JSON.parse(fs.readFileSync(GITHUB_EVENT_PATH, 'utf8'));
     lintResults.pr = {
       number: event.pull_request.number,
@@ -226,10 +268,10 @@ function collectResults() {
     };
   }
 
-  fs.writeFileSync(process.env.GITHUB_ENV, `LINT_RESULTS<<EOF\n${JSON.stringify(lintResults)}\nEOF\n`, { flag: 'a' });
+  fs.writeFileSync(process.env.GITHUB_ENV || '', `LINT_RESULTS<<EOF\n${JSON.stringify(lintResults)}\nEOF\n`, { flag: 'a' });
 }
 
-function getResultDetails(linter) {
+function getResultDetails(linter: LinterResult): string | null {
   if (linter.resultFile && fs.existsSync(linter.resultFile)) {
     try {
       const results = JSON.parse(fs.readFileSync(linter.resultFile, 'utf8'));
@@ -246,7 +288,7 @@ function getResultDetails(linter) {
       const { execSync } = require('child_process');
       const result = execSync(`npx ${linter.command} ${linter.flags} --format compact`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
       return result.trim() ? result.split('\n')[0] : null;
-    } catch (error) {
+    } catch (error: any) {
       return error.stdout ? error.stdout.split('\n')[0] : null;
     }
   }
@@ -256,7 +298,7 @@ function getResultDetails(linter) {
 // 스크립트 실행
 try {
   collectResults();
-} catch (error) {
+} catch (error: any) {
   console.error('결과 수집 중 오류 발생:', error);
   process.exit(1);
 } 
