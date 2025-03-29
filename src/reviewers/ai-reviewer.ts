@@ -9,34 +9,72 @@ export default class AIReviewer implements Reviewer {
   private openai: OpenAI;
   private options: ReviewerOptions;
   private readonly name = 'AIReviewer';
+  private isDebug: boolean;
 
   constructor(options: ReviewerOptions = {}) {
     this.options = options;
+    this.isDebug = process.env.DEBUG === 'true';
     const apiKey = this.options.apiKey || process.env.AI_REVIEWER_API_KEY;
     if (!apiKey) {
       throw new Error('OpenAI API 키가 설정되지 않았습니다.');
     }
     this.openai = new OpenAI({ apiKey });
+    
+    if (this.isDebug) {
+      core.debug('AI 리뷰어 초기화됨');
+      core.debug(`설정: ${JSON.stringify({
+        model: this.options.model,
+        maxTokens: this.options.maxTokens,
+        temperature: this.options.temperature,
+        filePatterns: this.options.filePatterns,
+        excludePatterns: this.options.excludePatterns,
+        workdir: this.options.workdir
+      }, null, 2)}`);
+    }
   }
 
   async isEnabled(): Promise<boolean> {
-    return process.env.SKIP_AI_REVIEW !== 'true' && !!(this.options.apiKey || process.env.AI_REVIEWER_API_KEY);
+    const enabled = process.env.SKIP_AI_REVIEW !== 'true' && !!(this.options.apiKey || process.env.AI_REVIEWER_API_KEY);
+    if (this.isDebug) {
+      core.debug(`AI 리뷰어 활성화 상태: ${enabled}`);
+    }
+    return enabled;
   }
 
   async review(files: string[]): Promise<ReviewResult[]> {
     const results: ReviewResult[] = [];
     const workdir = this.options.workdir || '.';
 
+    if (this.isDebug) {
+      core.debug(`검토할 작업 디렉토리: ${workdir}`);
+      core.debug(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
+    }
+
     // 파일 패턴이 지정되지 않은 경우 기본값 사용
     const targetFiles = files.length > 0 ? files : fsSync.readdirSync(workdir)
       .filter(file => file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.tsx'));
 
+    if (this.isDebug) {
+      core.debug(`필터링된 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
+    }
+
     for (const file of targetFiles) {
       try {
         const filePath = path.join(workdir, file);
+        if (this.isDebug) {
+          core.debug(`파일 분석 시작: ${filePath}`);
+        }
+
         const content = await fs.readFile(filePath, 'utf8');
         const suggestions = await this.analyzeCode(content);
         
+        if (this.isDebug) {
+          core.debug(`파일 ${filePath}에 대한 제안사항:`);
+          suggestions.forEach((suggestion, index) => {
+            core.debug(`  ${index + 1}. ${suggestion}`);
+          });
+        }
+
         // 각 제안사항을 개별 ReviewResult로 변환
         suggestions.forEach((suggestion, index) => {
           results.push({
@@ -49,7 +87,14 @@ export default class AIReviewer implements Reviewer {
         });
       } catch (error) {
         core.warning(`파일 분석 중 오류 발생 (${file}): ${error}`);
+        if (this.isDebug && error instanceof Error) {
+          core.debug(`스택 트레이스: ${error.stack}`);
+        }
       }
+    }
+
+    if (this.isDebug) {
+      core.debug(`총 ${results.length}개의 리뷰 결과가 생성되었습니다.`);
     }
 
     return results;
@@ -57,6 +102,11 @@ export default class AIReviewer implements Reviewer {
 
   private async analyzeCode(code: string): Promise<string[]> {
     try {
+      if (this.isDebug) {
+        core.debug('OpenAI API 호출 시작...');
+        core.debug(`사용 모델: ${this.options.model || 'gpt-4o'}`);
+      }
+
       const response = await this.openai.chat.completions.create({
         model: this.options.model || 'gpt-4o',
         messages: [
@@ -78,10 +128,19 @@ export default class AIReviewer implements Reviewer {
         .filter(line => line.trim().length > 0)
         .map(line => line.replace(/^[0-9]+\.\s*/, '')) || [];
 
+      if (this.isDebug) {
+        core.debug('OpenAI API 응답 받음');
+        core.debug(`원본 응답: ${response.choices[0].message.content}`);
+        core.debug(`처리된 제안사항 수: ${suggestions.length}`);
+      }
+
       return suggestions;
     } catch (error) {
       if (error instanceof Error) {
         core.error(error.message);
+        if (this.isDebug) {
+          core.debug(`OpenAI API 오류 상세: ${error.stack}`);
+        }
       } else {
         core.error('OpenAI API 호출 중 알 수 없는 오류가 발생했습니다.');
       }
