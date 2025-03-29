@@ -19,7 +19,7 @@ interface PackageJson {
   dependencies: Record<string, string>;
 }
 
-interface VersionsJson {
+interface VersionsConfig {
   core: Record<string, string>;
   linters: {
     eslint?: {
@@ -41,14 +41,48 @@ interface VersionsJson {
   };
 }
 
+// 버전 정보를 코드 내에서 직접 관리
+const versions: VersionsConfig = {
+  core: {
+    '@actions/core': '^1.10.1',
+    '@actions/exec': '^1.1.1'
+  },
+  linters: {
+    eslint: {
+      version: '^8.57.0',
+      dependencies: {
+        '@typescript-eslint/eslint-plugin': '^7.1.0',
+        '@typescript-eslint/parser': '^7.1.0',
+        'eslint-config-prettier': '^9.1.0',
+        'eslint-plugin-import': '^2.29.1',
+        'eslint-plugin-jest': '^27.9.0',
+        'eslint-plugin-prettier': '^5.1.3'
+      }
+    },
+    prettier: {
+      version: '^3.2.5',
+      dependencies: {}
+    },
+    stylelint: {
+      version: '^16.2.1',
+      dependencies: {
+        'stylelint-config-standard': '^36.0.0',
+        'stylelint-config-prettier': '^9.0.5'
+      }
+    },
+    markdownlint: {
+      version: '^0.33.0',
+      dependencies: {
+        'markdownlint-cli': '^0.39.0'
+      }
+    }
+  }
+};
+
 function createPackageJson(workdir: string): void {
   console.log('\n=== package.json 생성 시작 ===');
   
   try {
-    // versions.json 읽기
-    const versionsPath = path.join(__dirname, 'versions.json');
-    const versions: VersionsJson = require(versionsPath);
-    
     // 필요한 의존성 수집
     const requiredDeps: Record<string, string> = {};
     const inputs = getInputs();
