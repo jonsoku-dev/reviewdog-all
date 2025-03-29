@@ -24,7 +24,7 @@ jobs:
           workdir: ./testdata/
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-          ai_reviewer_model: gpt-4
+          ai_reviewer_model: gpt-4o
           ai_reviewer_max_tokens: 1000
           ai_reviewer_temperature: 0.7
           ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
@@ -51,7 +51,7 @@ jobs:
   #         workdir: ./testdata/
   #         ai_reviewer_enabled: true
   #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-  #         ai_reviewer_model: gpt-4
+  #         ai_reviewer_model: gpt-4o
   #         ai_reviewer_max_tokens: 1000
   #         ai_reviewer_temperature: 0.7
   #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
@@ -77,7 +77,7 @@ jobs:
   #         workdir: ./testdata/no-config/
   #         ai_reviewer_enabled: true
   #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-  #         ai_reviewer_model: gpt-4
+  #         ai_reviewer_model: gpt-4o
   #         ai_reviewer_max_tokens: 1000
   #         ai_reviewer_temperature: 0.7
   #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"

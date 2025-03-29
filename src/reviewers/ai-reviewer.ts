@@ -58,7 +58,7 @@ export class AIReviewer implements Reviewer {
   private async analyzeCode(code: string): Promise<string[]> {
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.options.model || 'gpt-4',
+        model: this.options.model || 'gpt-4o',
         messages: [
           {
             role: 'system',
