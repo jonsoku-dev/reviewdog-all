@@ -16,7 +16,7 @@ export class ReviewerManager {
   registerReviewer(reviewer: Reviewer): void {
     this.reviewers.set(reviewer.constructor.name, reviewer);
     if (this.options.debug) {
-      core.debug(`리뷰어 등록됨: ${reviewer.constructor.name}`);
+      console.log(`리뷰어 등록됨: ${reviewer.constructor.name}`);
     }
   }
 
@@ -26,8 +26,8 @@ export class ReviewerManager {
 
   async runReviews(): Promise<void> {
     if (this.options.debug) {
-      core.debug(`리뷰 실행 시작 (등록된 리뷰어: ${Array.from(this.reviewers.keys()).join(', ')})`);
-      core.debug(`전체 옵션: ${JSON.stringify({ ...this.options, apiKey: '***' }, null, 2)}`);
+      console.log(`리뷰 실행 시작 (등록된 리뷰어: ${Array.from(this.reviewers.keys()).join(', ')})`);
+      console.log(`전체 옵션: ${JSON.stringify({ ...this.options, apiKey: '***' }, null, 2)}`);
     }
 
     const results: ReviewResult[] = [];
@@ -49,19 +49,19 @@ export class ReviewerManager {
         };
 
         if (this.options.debug) {
-          core.debug(`${name} 리뷰어에 전달되는 옵션:`);
+          console.log(`${name} 리뷰어에 전달되는 옵션:`);
           const debugOptions = { ...reviewerOptions, apiKey: reviewerOptions.apiKey ? '***' : undefined };
-          core.debug(JSON.stringify(debugOptions, null, 2));
+          console.log(JSON.stringify(debugOptions, null, 2));
         }
 
         // 리뷰어 옵션 업데이트 전 디버그 로그
-        core.debug(`${name} 리뷰어 옵션 업데이트 시작`);
+        console.log(`${name} 리뷰어 옵션 업데이트 시작`);
         
         // 리뷰어 옵션 업데이트
         if ('options' in reviewer) {
           try {
             (reviewer as any).options = reviewerOptions;
-            core.debug(`${name} 리뷰어 옵션 업데이트 완료`);
+            console.log(`${name} 리뷰어 옵션 업데이트 완료`);
           } catch (error) {
             core.error(`${name} 리뷰어 옵션 업데이트 중 오류 발생: ${error}`);
           }
@@ -69,30 +69,30 @@ export class ReviewerManager {
 
         if (await reviewer.isEnabled()) {
           if (this.options.debug) {
-            core.debug(`${name} 리뷰어 실행 중...`);
+            console.log(`${name} 리뷰어 실행 중...`);
           }
 
           // 파일 패턴에 따라 검사할 파일 목록 생성
           const files = await this.getTargetFiles(name);
           if (this.options.debug) {
-            core.debug(`${name} 리뷰어가 검사할 파일 수: ${files.length}`);
+            console.log(`${name} 리뷰어가 검사할 파일 수: ${files.length}`);
           }
 
           const reviewResults = await reviewer.review(files);
           results.push(...reviewResults);
 
           if (this.options.debug) {
-            core.debug(`${name} 리뷰어 완료 (발견된 문제: ${reviewResults.length}개)`);
+            console.log(`${name} 리뷰어 완료 (발견된 문제: ${reviewResults.length}개)`);
           }
         } else {
           if (this.options.debug) {
-            core.debug(`${name} 리뷰어가 비활성화되어 있어 건너뜁니다.`);
+            console.log(`${name} 리뷰어가 비활성화되어 있어 건너뜁니다.`);
           }
         }
       } catch (error) {
         core.error(`${name} 리뷰어 실행 중 오류 발생: ${error}`);
         if (this.options.debug && error instanceof Error) {
-          core.debug(`스택 트레이스: ${error.stack}`);
+          console.log(`스택 트레이스: ${error.stack}`);
         }
       }
     }
@@ -101,7 +101,7 @@ export class ReviewerManager {
     await this.saveResults(results);
 
     if (this.options.debug) {
-      core.debug(`모든 리뷰 완료. 총 ${results.length}개의 문제가 발견되었습니다.`);
+      console.log(`모든 리뷰 완료. 총 ${results.length}개의 문제가 발견되었습니다.`);
     }
   }
 
@@ -155,7 +155,7 @@ export class ReviewerManager {
       await fs.writeFile(resultsFile, JSON.stringify(results, null, 2));
       
       if (this.options.debug) {
-        core.debug(`리뷰 결과가 ${resultsFile}에 저장되었습니다.`);
+        console.log(`리뷰 결과가 ${resultsFile}에 저장되었습니다.`);
       }
 
       // 마크다운 요약 생성 및 저장
@@ -164,7 +164,7 @@ export class ReviewerManager {
       await fs.writeFile(summaryFile, summary);
 
       if (this.options.debug) {
-        core.debug(`리뷰 요약이 ${summaryFile}에 저장되었습니다.`);
+        console.log(`리뷰 요약이 ${summaryFile}에 저장되었습니다.`);
       }
     } catch (error) {
       core.error(`결과 저장 중 오류 발생: ${error}`);
