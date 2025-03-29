@@ -76,6 +76,22 @@ export class ReviewerManager {
           }
 
           const reviewResults = await reviewer.review(files);
+          
+          // 리뷰 결과를 GitHub Actions 로그에 표시
+          for (const result of reviewResults) {
+            const message = `[${result.reviewer}] ${result.file}:${result.line} - ${result.message}`;
+            switch (result.severity) {
+              case 'error':
+                core.error(message);
+                break;
+              case 'warning':
+                core.warning(message);
+                break;
+              default:
+                core.notice(message);
+            }
+          }
+
           results.push(...reviewResults);
 
           if (this.options.debug) {
@@ -96,8 +112,70 @@ export class ReviewerManager {
 
     await this.saveResults(results);
 
+    // GitHub Actions 요약 페이지에 결과 표시
+    await this.createActionsSummary(results);
+
     if (this.options.debug) {
       console.log(`모든 리뷰 완료. 총 ${results.length}개의 문제가 발견되었습니다.`);
+    }
+  }
+
+  private async createActionsSummary(results: ReviewResult[]): Promise<void> {
+    try {
+      // 심각도별 통계 계산
+      const severityCounts = results.reduce((counts, result) => {
+        counts[result.severity] = (counts[result.severity] || 0) + 1;
+        return counts;
+      }, {} as Record<string, number>);
+
+      // 요약 생성
+      await core.summary
+        .addHeading('코드 품질 검사 결과')
+        .addRaw('\n')
+        .addRaw(`총 ${results.length}개의 문제가 발견되었습니다.`)
+        .addRaw('\n\n')
+        .addHeading('심각도별 통계', 3)
+        .addList(
+          Object.entries(severityCounts).map(
+            ([severity, count]) => `${severity}: ${count}개`
+          )
+        )
+        .addRaw('\n');
+
+      // 리뷰어별 결과 추가
+      const reviewerGroups = results.reduce((groups, result) => {
+        if (!groups[result.reviewer]) {
+          groups[result.reviewer] = [];
+        }
+        groups[result.reviewer].push(result);
+        return groups;
+      }, {} as Record<string, ReviewResult[]>);
+
+      for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
+        await core.summary
+          .addHeading(`${reviewer} (${reviewerResults.length}개)`, 3)
+          .addTable([
+            [
+              { data: '심각도', header: true },
+              { data: '파일', header: true },
+              { data: '라인', header: true },
+              { data: '메시지', header: true }
+            ],
+            ...reviewerResults.map(result => [
+              result.severity,
+              result.file,
+              result.line.toString(),
+              result.message
+            ])
+          ])
+          .addRaw('\n');
+      }
+
+      // 요약 저장
+      await core.summary.write();
+
+    } catch (error) {
+      core.error(`GitHub Actions 요약 생성 중 오류 발생: ${error}`);
     }
   }
 
@@ -140,13 +218,40 @@ export class ReviewerManager {
       await fs.mkdir(this.resultsDir, { recursive: true });
       
       const resultsFile = path.join(this.resultsDir, 'review-results.json');
-      await fs.writeFile(resultsFile, JSON.stringify(results, null, 2));
-      
-      if (this.options.debug) {
-        console.log(`리뷰 결과가 ${resultsFile}에 저장되었습니다.`);
+      let existingResults: ReviewResult[] = [];
+
+      // 기존 결과 파일이 있다면 읽어옴
+      try {
+        const content = await fs.readFile(resultsFile, 'utf8');
+        existingResults = JSON.parse(content);
+        if (this.options.debug) {
+          console.log(`기존 리뷰 결과 ${existingResults.length}개를 불러왔습니다.`);
+        }
+      } catch (error) {
+        if (this.options.debug) {
+          console.log('기존 리뷰 결과 파일이 없습니다. 새로 생성합니다.');
+        }
       }
 
-      const summary = await this.generateSummary(results);
+      // 타임스탬프 추가
+      const timestamp = new Date().toISOString();
+      const newResults = results.map(result => ({
+        ...result,
+        timestamp,
+      }));
+
+      // 새로운 결과를 기존 결과 배열에 추가
+      const updatedResults = [...existingResults, ...newResults];
+      
+      // 결과 파일 저장
+      await fs.writeFile(resultsFile, JSON.stringify(updatedResults, null, 2));
+      
+      if (this.options.debug) {
+        console.log(`리뷰 결과가 ${resultsFile}에 저장되었습니다. (총 ${updatedResults.length}개)`);
+      }
+
+      // 마크다운 요약 생성 및 저장
+      const summary = await this.generateSummary(updatedResults);
       const summaryFile = path.join(this.resultsDir, 'review-summary.md');
       await fs.writeFile(summaryFile, summary);
 
@@ -161,53 +266,75 @@ export class ReviewerManager {
   async generateSummary(results: ReviewResult[]): Promise<string> {
     let summary = '# 코드 품질 검사 결과 요약\n\n';
     
-    summary += `총 ${results.length}개의 문제가 발견되었습니다.\n\n`;
-
-    const reviewerGroups = results.reduce((groups, result) => {
-      const reviewer = result.reviewer;
-      if (!groups[reviewer]) {
-        groups[reviewer] = [];
+    // 결과를 날짜별로 그룹화
+    const dateGroups = results.reduce((groups, result) => {
+      const date = (result as any).timestamp?.split('T')[0] || '날짜 없음';
+      if (!groups[date]) {
+        groups[date] = [];
       }
-      groups[reviewer].push(result);
+      groups[date].push(result);
       return groups;
     }, {} as Record<string, ReviewResult[]>);
 
-    for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
-      summary += `## ${reviewer} 검사 결과\n`;
-      summary += `- 발견된 문제: ${reviewerResults.length}개\n\n`;
+    // 날짜별로 정렬 (최신순)
+    const sortedDates = Object.keys(dateGroups).sort().reverse();
 
-      const severityCounts = reviewerResults.reduce((counts, result) => {
-        counts[result.severity] = (counts[result.severity] || 0) + 1;
-        return counts;
-      }, {} as Record<string, number>);
+    for (const date of sortedDates) {
+      const dateResults = dateGroups[date];
+      summary += `## ${date} 검사 결과\n\n`;
+      summary += `총 ${dateResults.length}개의 문제가 발견되었습니다.\n\n`;
 
-      summary += '### 심각도별 통계\n';
-      for (const [severity, count] of Object.entries(severityCounts)) {
-        summary += `- ${severity}: ${count}개\n`;
-      }
-      summary += '\n';
-
-      const fileGroups = reviewerResults.reduce((groups, result) => {
-        if (!groups[result.file]) {
-          groups[result.file] = [];
+      // 리뷰어별 요약
+      const reviewerGroups = dateResults.reduce((groups, result) => {
+        const reviewer = result.reviewer;
+        if (!groups[reviewer]) {
+          groups[reviewer] = [];
         }
-        groups[result.file].push(result);
+        groups[reviewer].push(result);
         return groups;
       }, {} as Record<string, ReviewResult[]>);
 
-      for (const [file, fileResults] of Object.entries(fileGroups)) {
-        summary += `### ${file}\n\n`;
-        for (const result of fileResults) {
-          const severityIcon = {
-            error: '🔴',
-            warning: '⚠️',
-            info: 'ℹ️'
-          }[result.severity] || '';
-          
-          summary += `${severityIcon} **${result.severity.toUpperCase()}** - ${result.message} (라인 ${result.line})\n`;
+      for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
+        summary += `### ${reviewer}\n`;
+        summary += `- 발견된 문제: ${reviewerResults.length}개\n\n`;
+
+        // 심각도별 통계
+        const severityCounts = reviewerResults.reduce((counts, result) => {
+          counts[result.severity] = (counts[result.severity] || 0) + 1;
+          return counts;
+        }, {} as Record<string, number>);
+
+        summary += '#### 심각도별 통계\n';
+        for (const [severity, count] of Object.entries(severityCounts)) {
+          summary += `- ${severity}: ${count}개\n`;
         }
         summary += '\n';
+
+        // 파일별 그룹화
+        const fileGroups = reviewerResults.reduce((groups, result) => {
+          if (!groups[result.file]) {
+            groups[result.file] = [];
+          }
+          groups[result.file].push(result);
+          return groups;
+        }, {} as Record<string, ReviewResult[]>);
+
+        for (const [file, fileResults] of Object.entries(fileGroups)) {
+          summary += `#### ${file}\n\n`;
+          for (const result of fileResults) {
+            const severityIcon = {
+              error: '🔴',
+              warning: '⚠️',
+              info: 'ℹ️'
+            }[result.severity] || '';
+            
+            summary += `${severityIcon} **${result.severity.toUpperCase()}** - ${result.message} (라인 ${result.line})\n`;
+          }
+          summary += '\n';
+        }
       }
+
+      summary += '---\n\n';
     }
 
     return summary;
