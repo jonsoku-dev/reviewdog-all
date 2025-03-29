@@ -15,7 +15,7 @@ interface ConfigInputs {
 
 function copyConfigFiles(workdir: string, toolName: string, configPath?: string): void {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
-  const sourceDir = path.join(__dirname, 'configs', toolName);
+  const sourceDir = path.join(__dirname, '..', 'configs', toolName);
   
   try {
     const files = fs.readdirSync(sourceDir);
