@@ -159,7 +159,14 @@ runs:
     - name: Setup workspace
       shell: bash
       run: |
-        cd $WORKSPACE_PATH
+        cd "${WORKSPACE_PATH}"
+        
+        # TypeScript 스크립트로 package.json 생성
+        echo "작업 공간 설정 시작..."
+        npx ts-node ${{ github.action_path }}/src/setup-workspace.ts
+        
+        # 의존성 설치
+        echo "의존성 설치 중..."
         npm install
 
     # 5. 설정 파일 생성
