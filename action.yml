@@ -178,9 +178,9 @@ runs:
         npx ts-node ./src/run-reviews.ts
 
     # 5. 리뷰 결과 보고
-    - name: Report results
-      shell: bash
-      run: |
-        cd $WORKSPACE_PATH
-        cp -r ${{ github.action_path }}/src ./src
-        npx ts-node ./src/report-results.ts
+    # - name: Report results
+    #   shell: bash
+    #   run: |
+    #     cd $WORKSPACE_PATH
+    #     cp -r ${{ github.action_path }}/src ./src
+    #     npx ts-node ./src/report-results.ts
