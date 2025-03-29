@@ -10,6 +10,12 @@ author: "Jonsoku"
 # Misspell 액션 버전: 9daa94af4357dddb6fd3775de806bc0a8e98d3e4
 
 inputs:
+  # 디버그 설정
+  debug:
+    description: "디버그 모드 활성화 여부"
+    required: false
+    default: "false"
+
   workdir:
     description: "작업 디렉토리 경로"
     required: false
@@ -95,10 +101,17 @@ runs:
     - name: Setup environment
       shell: bash
       run: |
+        # 디버그 모드 설정
+        if [ "${{ inputs.debug }}" = "true" ]; then
+          echo "DEBUG=true" >> $GITHUB_ENV
+          set -x
+        fi
+
         # 기본 설정
         echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
         echo "FAIL_ON_ERROR=${{ inputs.fail_on_error }}" >> $GITHUB_ENV
         echo "COMMENT_MODE=${{ inputs.comment_mode }}" >> $GITHUB_ENV
+        echo "GITHUB_WORKSPACE=${{ inputs.workdir }}" >> $GITHUB_ENV
 
         # AI 리뷰어 설정
         echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV

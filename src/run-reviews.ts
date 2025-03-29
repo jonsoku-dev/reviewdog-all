@@ -3,8 +3,20 @@ import { ReviewerManager } from './reviewers/reviewer-manager';
 
 async function runReviews() {
   try {
+    // 디버그 모드 확인
+    const isDebug = process.env.DEBUG === 'true';
+    if (isDebug) {
+      core.info('디버그 모드가 활성화되었습니다.');
+      core.debug('환경 변수:');
+      Object.entries(process.env).forEach(([key, value]) => {
+        if (key.includes('REVIEWER') || key.includes('GITHUB')) {
+          core.debug(`${key}: ${value}`);
+        }
+      });
+    }
+
     // 환경 변수에서 설정 가져오기
-    const enabledReviewers = process.env.ENABLED_REVIEWERS?.split(',') || [];
+    const enabledReviewers = process.env.ENABLED_REVIEWERS?.split(',').filter(Boolean) || [];
     
     if (enabledReviewers.length === 0) {
       core.warning('활성화된 리뷰어가 없습니다.');
@@ -17,13 +29,28 @@ async function runReviews() {
     // 활성화된 리뷰어 등록
     for (const reviewerName of enabledReviewers) {
       try {
-        // 리뷰어 설정 가져오기
-        const configEnvKey = `${reviewerName.toUpperCase()}_REVIEWER_CONFIG`;
-        const config = process.env[configEnvKey] ? JSON.parse(process.env[configEnvKey]) : {};
+        if (isDebug) {
+          core.debug(`${reviewerName} 리뷰어 설정을 로드합니다...`);
+        }
+
+        // 리뷰어 설정 구성
+        const config = {
+          enabled: process.env[`${reviewerName.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
+          apiKey: process.env[`${reviewerName.toUpperCase()}_REVIEWER_API_KEY`] || '',
+          model: process.env[`${reviewerName.toUpperCase()}_REVIEWER_MODEL`] || '',
+          maxTokens: parseInt(process.env[`${reviewerName.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
+          temperature: parseFloat(process.env[`${reviewerName.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
+          filePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(',') || [],
+          excludePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',') || []
+        };
 
         if (!config.enabled) {
           core.info(`${reviewerName} 리뷰어가 설정에서 비활성화되어 있습니다.`);
           continue;
+        }
+
+        if (isDebug) {
+          core.debug(`${reviewerName} 리뷰어 설정: ${JSON.stringify(config, null, 2)}`);
         }
 
         // 리뷰어 동적 로드 및 등록
@@ -45,6 +72,9 @@ async function runReviews() {
         }
       } catch (error) {
         core.warning(`${reviewerName} 리뷰어 로드 중 오류 발생: ${error}`);
+        if (isDebug && error instanceof Error) {
+          core.debug(`스택 트레이스: ${error.stack || error.message}`);
+        }
       }
     }
 
@@ -54,6 +84,9 @@ async function runReviews() {
 
   } catch (error) {
     core.error(`리뷰 실행 중 오류 발생: ${error}`);
+    if (process.env.DEBUG === 'true' && error instanceof Error) {
+      core.debug(`스택 트레이스: ${error.stack || error.message}`);
+    }
     if (process.env.FAIL_ON_ERROR === 'true') {
       core.setFailed(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
     }
