@@ -141,11 +141,11 @@ export default class AIReviewer implements Reviewer {
     try {
       if (this._options.debug) {
         console.log('OpenAI API 호출 시작...');
-        console.log(`사용 모델: ${this._options.model || 'gpt-4'}`);
+        console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
       }
 
       const response = await this.openai.chat.completions.create({
-        model: this._options.model || 'gpt-4',
+        model: this._options.model || 'gpt-4o',
         messages: [
           {
             role: 'system',
