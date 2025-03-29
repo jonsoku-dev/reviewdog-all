@@ -1,0 +1,49 @@
+name: Build and Deploy Action
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build TypeScript
+        run: npm run build
+        
+      - name: Check for changes in dist
+        id: git-check
+        run: |
+          git add dist/
+          git status --porcelain
+          echo "changes=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
+        
+      - name: Commit and push if changed
+        if: steps.git-check.outputs.changes > 0 && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.name 'github-actions[bot]'
+          git config --local user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -m "chore(build): Update dist files [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

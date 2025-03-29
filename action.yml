@@ -164,17 +164,9 @@ runs:
           mkdir -p ${{ inputs.workdir }}
         fi
         
-        # TypeScript 실행을 위한 임시 디렉토리 생성 및 의존성 설치
-        echo "TypeScript 실행 환경 준비 중..."
-        TEMP_DIR=$(mktemp -d)
-        cd $TEMP_DIR
-        npm init -y
-        npm install typescript ts-node @types/node
-        
-        # TypeScript 스크립트로 package.json 생성
+        # package.json 생성을 위해 컴파일된 JS 실행
         echo "작업 공간 설정 시작..."
-        cd $WORKSPACE_PATH
-        npx --prefix $TEMP_DIR ts-node ${{ github.action_path }}/src/setup-workspace.ts
+        node ${{ github.action_path }}/dist/setup-workspace.js
         
         # 생성된 package.json의 의존성 설치 (workdir 내부에서 실행)
         if [ "${{ inputs.workdir }}" != "." ]; then
@@ -182,9 +174,6 @@ runs:
         fi
         echo "프로젝트 의존성 설치 중..."
         npm install
-        
-        # 임시 디렉토리 정리
-        rm -rf $TEMP_DIR
 
     # 5. 설정 파일 생성
     - name: Setup configurations
@@ -197,7 +186,7 @@ runs:
         else
           cp -r ${{ github.action_path }}/configs/* ./
         fi
-        npx ts-node ${{ github.action_path }}/src/setup-configs.ts
+        node ${{ github.action_path }}/dist/setup-configs.js
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
