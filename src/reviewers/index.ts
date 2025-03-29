@@ -8,7 +8,8 @@ export const createReviewer = (type: string, env?: NodeJS.ProcessEnv): Reviewer 
       return new AIReviewer({
         debug: env?.DEBUG === 'true',
         enabled: env?.AI_REVIEWER_ENABLED === 'true',
-        apiKey: env?.AI_REVIEWER_API_KEY,
+        apiKey: env?.AI_REVIEWER_API_KEY || 'API_KEY 없음',
+        language: env?.AI_REVIEWER_LANGUAGE as 'ko' | 'en' | 'ja',
         model: env?.AI_REVIEWER_MODEL,
         maxTokens: parseInt(env?.AI_REVIEWER_MAX_TOKENS || '1000'),
         temperature: parseFloat(env?.AI_REVIEWER_TEMPERATURE || '0.7'),

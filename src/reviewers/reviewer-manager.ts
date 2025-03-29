@@ -35,34 +35,9 @@ export class ReviewerManager {
     for (const [name, reviewer] of this.reviewers.entries()) {
       try {
         const reviewerType = name.replace('Reviewer', '').toLowerCase();
-        const reviewerOptions: ReviewerOptions = {
-          ...this.options,
-          debug: this.options.debug,
-          enabled: process.env[`${reviewerType.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
-          apiKey: process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_KEY`],
-          model: process.env[`${reviewerType.toUpperCase()}_REVIEWER_MODEL`],
-          maxTokens: parseInt(process.env[`${reviewerType.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
-          temperature: parseFloat(process.env[`${reviewerType.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
-          filePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
-          excludePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',')
-        };
-
-        if (this.options.debug) {
-          console.log(`${name} 리뷰어에 전달되는 옵션:`);
-          const debugOptions = { ...reviewerOptions, apiKey: reviewerOptions.apiKey ? '***' : undefined };
-          console.log(JSON.stringify(debugOptions, null, 2));
-          console.log(`${name} 리뷰어 옵션 업데이트 시작`);
-        }
         
-        if ('options' in reviewer) {
-          try {
-            (reviewer as any).options = reviewerOptions;
-            if (this.options.debug) {
-              console.log(`${name} 리뷰어 옵션 업데이트 완료`);
-            }
-          } catch (error) {
-            core.error(`${name} 리뷰어 옵션 업데이트 중 오류 발생: ${error}`);
-          }
+        if (this.options.debug) {
+          console.log(`${name} 리뷰어 실행 시작`);
         }
 
         if (await reviewer.isEnabled()) {

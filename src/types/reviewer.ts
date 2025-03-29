@@ -19,6 +19,7 @@ export interface ReviewerOptions {
   temperature?: number;
   filePatterns?: string[];
   excludePatterns?: string[];
+  language?: string;
 }
 
 export interface Reviewer {

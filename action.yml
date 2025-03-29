@@ -36,6 +36,11 @@ inputs:
     description: "OpenAI API 키"
     required: false
     default: ""
+  
+  ai_reviewer_language:
+    description: "AI 리뷰어 언어"
+    required: false
+    default: "ko"
     
   ai_reviewer_api_language:
     description: "OpenAI API 언어"
@@ -129,7 +134,8 @@ runs:
 
         # AI 리뷰어 설정
         echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV
-        echo "AI_REVIEWER_API_KEY=${{ inputs.ai_reviewer_api_key }}" >> $
+        echo "AI_REVIEWER_API_KEY=${{ inputs.ai_reviewer_api_key }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_LANGUAGE=${{ inputs.ai_reviewer_language }}" >> $GITHUB_ENV
         echo "AI_REVIEWER_API_LANGUAGE=${{ inputs.ai_reviewer_api_language }}" >> $GITHUB_ENV
         echo "AI_REVIEWER_MODEL=${{ inputs.ai_reviewer_model }}" >> $GITHUB_ENV
         echo "AI_REVIEWER_MAX_TOKENS=${{ inputs.ai_reviewer_max_tokens }}" >> $GITHUB_ENV

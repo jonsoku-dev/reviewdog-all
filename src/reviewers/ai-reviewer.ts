@@ -142,6 +142,7 @@ export default class AIReviewer implements Reviewer {
       if (this._options.debug) {
         console.log('OpenAI API 호출 시작...');
         console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
+        console.log(`사용 언어: ${this._options.language || 'ko'}`);
       }
 
       const response = await this.openai.chat.completions.create({
@@ -152,9 +153,13 @@ export default class AIReviewer implements Reviewer {
             content: '당신은 전문적인 코드 리뷰어입니다. 코드의 품질, 가독성, 성능, 보안 측면에서 개선사항을 제안해주세요.'
           },
           {
+            role: 'system',
+            content: `리스폰스 언어: ${this._options.language || 'ko'}`
+          },
+          {
             role: 'user',
             content: `다음 코드를 리뷰하고 개선사항을 제안해주세요:\n\n${code}`
-          }
+          },
         ],
         max_tokens: this._options.maxTokens || 1000,
         temperature: this._options.temperature || 0.7,
