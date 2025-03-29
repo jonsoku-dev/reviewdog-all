@@ -288,7 +288,8 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        npx ts-node ${{ github.action_path }}/src/code-review.ts
+        cp -r ${{ github.action_path }}/src/code-review.ts ${{ github.action_path }}/${{ inputs.workdir }}/code-review.ts
+        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/code-review.ts
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true'
@@ -313,7 +314,8 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        npx ts-node ${{ github.action_path }}/src/check.ts
+        cp -r ${{ github.action_path }}/src/check.ts ${{ github.action_path }}/${{ inputs.workdir }}/check.ts
+        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/check.ts
 
     - name: Record Accessibility Result
       if: inputs.skip_accessibility != 'true'
@@ -452,4 +454,5 @@ runs:
         SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
         SLACK_TOKEN: ${{ inputs.slack_token }}
       run: |
-        npx ts-node ${{ github.action_path }}/src/slack.ts
+        cp -r ${{ github.action_path }}/src/slack.ts ${{ github.action_path }}/${{ inputs.workdir }}/slack.ts
+        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/slack.ts
