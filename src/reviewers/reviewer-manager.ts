@@ -218,12 +218,26 @@ export class ReviewerManager {
   }
 
   private formatMessage(message: string): string {
-    // 코드 블록과 긴 메시지를 적절히 포맷팅
+    // 코드 블록을 인라인 코드로 변환하고 메시지를 포맷팅
     return message
       .split('\n')
-      .filter(line => line.trim() && !line.startsWith('```'))
-      .join('\n')
-      .replace(/\n+/g, '\n');
+      .map(line => {
+        // 코드 블록 시작과 끝 제거
+        if (line.trim().startsWith('```') || line.trim() === '```') {
+          return '';
+        }
+        // 코드 블록 내부 코드는 인라인 코드로 변환
+        if (line.trim().startsWith('const ') || line.trim().startsWith('function ') || line.trim().startsWith('let ') || line.trim().startsWith('var ')) {
+          return `\`${line.trim()}\``;
+        }
+        // 일반 텍스트는 그대로 유지
+        return line.trim();
+      })
+      .filter(line => line) // 빈 줄 제거
+      .join(' ') // 줄바꿈을 공백으로 변환
+      .replace(/\*\*/g, '✦') // 볼드 텍스트를 특수문자로 변환
+      .replace(/\s+/g, ' ') // 연속된 공백을 하나로 통합
+      .trim();
   }
 
   private async getTargetFiles(reviewerName: string): Promise<string[]> {
