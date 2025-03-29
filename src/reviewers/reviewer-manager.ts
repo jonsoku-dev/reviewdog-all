@@ -122,8 +122,11 @@ export class ReviewerManager {
 
   private async createActionsSummary(results: ReviewResult[]): Promise<void> {
     try {
-      // 심각도별 통계 계산
-      const severityCounts = results.reduce((counts, result) => {
+      // 결과 그룹화 및 중복 제거
+      const groupedResults = this.groupResults(results);
+
+      // 심각도별 통계 계산 (그룹화된 결과 기준)
+      const severityCounts = groupedResults.reduce((counts, result) => {
         counts[result.severity] = (counts[result.severity] || 0) + 1;
         return counts;
       }, {} as Record<string, number>);
@@ -132,7 +135,7 @@ export class ReviewerManager {
       await core.summary
         .addHeading('코드 품질 검사 결과')
         .addRaw('\n')
-        .addRaw(`총 ${results.length}개의 문제가 발견되었습니다.`)
+        .addRaw(`총 ${groupedResults.length}개의 문제가 발견되었습니다.`)
         .addRaw('\n\n')
         .addHeading('심각도별 통계', 3)
         .addList(
@@ -143,7 +146,7 @@ export class ReviewerManager {
         .addRaw('\n');
 
       // 리뷰어별 결과 추가
-      const reviewerGroups = results.reduce((groups, result) => {
+      const reviewerGroups = groupedResults.reduce((groups, result) => {
         if (!groups[result.reviewer]) {
           groups[result.reviewer] = [];
         }
@@ -165,18 +168,62 @@ export class ReviewerManager {
               result.severity,
               result.file,
               result.line.toString(),
-              result.message
+              this.formatMessage(result.message)
             ])
           ])
           .addRaw('\n');
       }
 
-      // 요약 저장
       await core.summary.write();
 
     } catch (error) {
       core.error(`GitHub Actions 요약 생성 중 오류 발생: ${error}`);
     }
+  }
+
+  private groupResults(results: ReviewResult[]): ReviewResult[] {
+    const grouped: ReviewResult[] = [];
+    let currentGroup: ReviewResult | null = null;
+
+    for (const result of results) {
+      // 코드 블록이나 제안사항 리스트는 건너뜁니다
+      if (result.message.startsWith('```') || result.message.startsWith('-') || result.message.startsWith('**')) {
+        if (currentGroup) {
+          currentGroup.message += '\n' + result.message;
+        }
+        continue;
+      }
+
+      // 새로운 그룹 시작
+      if (!currentGroup || 
+          currentGroup.file !== result.file || 
+          currentGroup.severity !== result.severity ||
+          currentGroup.reviewer !== result.reviewer) {
+        if (currentGroup) {
+          grouped.push(currentGroup);
+        }
+        currentGroup = { ...result };
+      } else {
+        // 기존 그룹에 메시지 추가
+        currentGroup.message += '\n' + result.message;
+      }
+    }
+
+    // 마지막 그룹 추가
+    if (currentGroup) {
+      grouped.push(currentGroup);
+    }
+
+    return grouped;
+  }
+
+  private formatMessage(message: string): string {
+    // 코드 블록과 긴 메시지를 적절히 포맷팅
+    return message
+      .split('\n')
+      .filter(line => line.trim() && !line.startsWith('```'))
+      .join('\n')
+      .replace(/\n+/g, '\n');
   }
 
   private async getTargetFiles(reviewerName: string): Promise<string[]> {
