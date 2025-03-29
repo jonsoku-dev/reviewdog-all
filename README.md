@@ -16,6 +16,10 @@
 - Markdownlint
 - Misspell
 
+## 아키텍처
+
+이 액션의 상세한 아키텍처와 작동 방식은 [아키텍처 문서](./docs/ARCHITECTURE.md)를 참조하세요.
+
 ## 사용법
 
 ```yaml

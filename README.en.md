@@ -16,6 +16,10 @@ This action runs multiple linting tools and reports results through reviewdog:
 - Markdownlint
 - Misspell
 
+## Architecture
+
+For detailed architecture and how this action works, please refer to the [Architecture Document](./docs/ARCHITECTURE.md).
+
 ## Usage
 
 ```yaml
