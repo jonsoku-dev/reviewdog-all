@@ -164,15 +164,19 @@ runs:
           mkdir -p ${{ inputs.workdir }}
         fi
         
+        # TypeScript 실행을 위한 기본 의존성 설치
+        echo "기본 의존성 설치 중..."
+        npm install -g typescript ts-node @types/node
+        
         # TypeScript 스크립트로 package.json 생성
         echo "작업 공간 설정 시작..."
-        npx ts-node ${{ github.action_path }}/src/setup-workspace.ts
+        ts-node ${{ github.action_path }}/src/setup-workspace.ts
         
-        # 의존성 설치 (workdir 내부에서 실행)
+        # 생성된 package.json의 의존성 설치 (workdir 내부에서 실행)
         if [ "${{ inputs.workdir }}" != "." ]; then
           cd ${{ inputs.workdir }}
         fi
-        echo "의존성 설치 중..."
+        echo "프로젝트 의존성 설치 중..."
         npm install
 
     # 5. 설정 파일 생성
