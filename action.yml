@@ -176,7 +176,6 @@ runs:
       if: inputs.skip_eslint != 'true'
       uses: reviewdog/action-eslint@2fee6dd72a5419ff4113f694e2068d2a03bb35dd
       continue-on-error: true
-      working-directory: ${{ inputs.workdir }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -201,7 +200,6 @@ runs:
       if: inputs.skip_stylelint != 'true'
       uses: reviewdog/action-stylelint@dd2b435cc6a7c82705307a9dee740c9bbaa10411
       continue-on-error: true
-      working-directory: ${{ inputs.workdir }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -227,7 +225,6 @@ runs:
       if: inputs.skip_markdownlint != 'true'
       uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58
       continue-on-error: true
-      working-directory: ${{ inputs.workdir }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
@@ -251,7 +248,6 @@ runs:
       if: inputs.skip_misspell != 'true'
       uses: reviewdog/action-misspell@9daa94af4357dddb6fd3775de806bc0a8e98d3e4
       continue-on-error: true
-      working-directory: ${{ inputs.workdir }}
       with:
         github_token: ${{ inputs.github_token }}
         reporter: ${{ inputs.reporter }}
