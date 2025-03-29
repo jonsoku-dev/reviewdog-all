@@ -114,28 +114,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # 0. 공통 함수 정의
-    - name: Define Common Functions
-      shell: bash
-      run: |
-        setup_workspace() {
-          if [ "${{ inputs.workdir }}" != "." ]; then
-            echo "사용자 지정 workdir 설정: ${{ inputs.workdir }}"
-            mkdir -p "${{ github.action_path }}/workspace/${{ inputs.workdir }}"
-            cp -r "${{ github.workspace }}/${{ inputs.workdir }}"/* "${{ github.action_path }}/workspace/${{ inputs.workdir }}/"
-            echo "WORKSPACE_PATH=${{ github.action_path }}/workspace" >> $GITHUB_ENV
-            echo "WORKDIR_PATH=${{ github.action_path }}/workspace/${{ inputs.workdir }}" >> $GITHUB_ENV
-          else
-            echo "기본 workdir 사용"
-            echo "WORKSPACE_PATH=${{ github.workspace }}" >> $GITHUB_ENV
-            echo "WORKDIR_PATH=${{ github.workspace }}" >> $GITHUB_ENV
-          fi
-        }
-
-        change_to_workdir() {
-          cd "$WORKDIR_PATH" || exit 1
-        }
-
     # 1. 환경 설정
     - name: Setup environment
       shell: bash
@@ -146,8 +124,15 @@ runs:
           set -x
         fi
 
-        # 작업 공간 설정
-        setup_workspace
+        # workdir이 기본값이 아닌 경우 파일 복사
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          echo "사용자 지정 workdir에서 파일 복사 중..."
+          mkdir -p ${{ github.action_path }}/workspace
+          cp -r ${{ github.workspace }}/${{ inputs.workdir }}/* ${{ github.action_path }}/workspace/
+          echo "WORKSPACE_PATH=${{ github.action_path }}/workspace" >> $GITHUB_ENV
+        else
+          echo "WORKSPACE_PATH=${{ github.workspace }}" >> $GITHUB_ENV
+        fi
 
         # reviewdog 설정
         echo "REVIEWDOG_GITHUB_API_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
@@ -174,12 +159,19 @@ runs:
     - name: Setup workspace
       shell: bash
       run: |
-        change_to_workdir
+        cd $WORKSPACE_PATH
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          mkdir -p ${{ inputs.workdir }}
+        fi
         
         # package.json 생성을 위해 컴파일된 JS 실행
         echo "작업 공간 설정 시작..."
         node ${{ github.action_path }}/dist/setup-workspace.js
         
+        # 생성된 package.json의 의존성 설치 (workdir 내부에서 실행)
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          cd ${{ inputs.workdir }}
+        fi
         echo "프로젝트 의존성 설치 중..."
         npm install
 
@@ -187,8 +179,13 @@ runs:
     - name: Setup configurations
       shell: bash
       run: |
-        change_to_workdir
-        cp -r ${{ github.action_path }}/configs/* ./
+        cd $WORKSPACE_PATH
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          mkdir -p ${{ inputs.workdir }}
+          cp -r ${{ github.action_path }}/configs/* ${{ inputs.workdir }}/
+        else
+          cp -r ${{ github.action_path }}/configs/* ./
+        fi
         node ${{ github.action_path }}/dist/setup-configs.js
 
     # 6. ESLint (with Prettier) 실행
@@ -210,7 +207,6 @@ runs:
       if: inputs.skip_eslint != 'true'
       shell: bash
       run: |
-        change_to_workdir
         echo "ESLINT_OUTCOME=${{ steps.eslint.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.eslint.outcome }}" != "success" ]; then
           echo "ESLINT_FAILED=true" >> $GITHUB_ENV
@@ -236,7 +232,6 @@ runs:
       if: inputs.skip_stylelint != 'true'
       shell: bash
       run: |
-        change_to_workdir
         echo "STYLELINT_OUTCOME=${{ steps.stylelint.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.stylelint.outcome }}" != "success" ]; then
           echo "STYLELINT_FAILED=true" >> $GITHUB_ENV
@@ -255,13 +250,11 @@ runs:
         level: ${{ inputs.level }}
         fail_level: ${{ inputs.fail_level }}
         markdownlint_flags: ${{ inputs.markdownlint_flags }}
-        workdir: ${{ inputs.workdir }}
 
     - name: Record Markdownlint Result
       if: inputs.skip_markdownlint != 'true'
       shell: bash
       run: |
-        change_to_workdir
         echo "MARKDOWNLINT_OUTCOME=${{ steps.markdownlint.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.markdownlint.outcome }}" != "success" ]; then
           echo "MARKDOWNLINT_FAILED=true" >> $GITHUB_ENV
@@ -282,13 +275,12 @@ runs:
         locale: ${{ inputs.misspell_locale }}
         ignore: ${{ inputs.misspell_ignore }}
         pattern: "**/*"
-        workdir: ${{ inputs.workdir }}
+        path: ${{ inputs.workdir }}
 
     - name: Record Misspell Result
       if: inputs.skip_misspell != 'true'
       shell: bash
       run: |
-        change_to_workdir
         echo "MISSPELL_OUTCOME=${{ steps.misspell.outcome }}" >> $GITHUB_ENV
         if [ "${{ steps.misspell.outcome }}" != "success" ]; then
           echo "MISSPELL_FAILED=true" >> $GITHUB_ENV
