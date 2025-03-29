@@ -11,21 +11,38 @@ export default class AIReviewer implements Reviewer {
   private readonly name = 'AIReviewer';
 
   constructor(options: ReviewerOptions = {}) {
+    core.debug('AI 리뷰어 생성자 호출됨');
     this._options = options;
+    
+    if (this._options.debug) {
+      core.debug('AI 리뷰어 초기 옵션:');
+      core.debug(JSON.stringify({ ...this._options, apiKey: this._options.apiKey ? '***' : undefined }, null, 2));
+    }
+    
     this.initializeOpenAI();
   }
 
   private initializeOpenAI() {
-    if (!this._options.apiKey) {
-      throw new Error('OpenAI API 키가 설정되지 않았습니다.');
-    }
-    core.debug('나는 Open AI 리뷰어입니다.');
-    this.openai = new OpenAI({ apiKey: this._options.apiKey });
+    core.debug('AI 리뷰어 OpenAI 초기화 시작');
     
-    if (this._options.debug) {
-      core.debug('AI 리뷰어 초기화됨');
-      const debugConfig = { ...this._options, apiKey: '***' };
-      core.debug(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
+    if (!this._options.apiKey) {
+      const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
+      core.error(error.message);
+      throw error;
+    }
+
+    try {
+      this.openai = new OpenAI({ apiKey: this._options.apiKey });
+      core.debug('OpenAI 클라이언트가 성공적으로 초기화되었습니다.');
+      
+      if (this._options.debug) {
+        core.debug('AI 리뷰어 초기화됨');
+        const debugConfig = { ...this._options, apiKey: '***' };
+        core.debug(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
+      }
+    } catch (error) {
+      core.error('OpenAI 클라이언트 초기화 중 오류 발생');
+      throw error;
     }
   }
 
@@ -35,13 +52,17 @@ export default class AIReviewer implements Reviewer {
   }
 
   set options(newOptions: ReviewerOptions) {
+    core.debug('AI 리뷰어 옵션 업데이트 시작');
     this._options = newOptions;
+    
     if (this._options.debug) {
       core.debug('AI 리뷰어 옵션이 업데이트되었습니다.');
       const debugConfig = { ...this._options, apiKey: '***' };
       core.debug(`새 설정: ${JSON.stringify(debugConfig, null, 2)}`);
     }
+    
     this.initializeOpenAI();
+    core.debug('AI 리뷰어 옵션 업데이트 완료');
   }
 
   async isEnabled(): Promise<boolean> {

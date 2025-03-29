@@ -36,8 +36,9 @@ export class ReviewerManager {
       try {
         // 리뷰어별 옵션 설정
         const reviewerType = name.replace('Reviewer', '').toLowerCase();
-        const reviewerOptions = {
+        const reviewerOptions: ReviewerOptions = {
           ...this.options,
+          debug: this.options.debug,
           enabled: process.env[`${reviewerType.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
           apiKey: process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_KEY`],
           model: process.env[`${reviewerType.toUpperCase()}_REVIEWER_MODEL`],
@@ -48,13 +49,22 @@ export class ReviewerManager {
         };
 
         if (this.options.debug) {
+          core.debug(`${name} 리뷰어에 전달되는 옵션:`);
           const debugOptions = { ...reviewerOptions, apiKey: reviewerOptions.apiKey ? '***' : undefined };
-          core.debug(`${name} 리뷰어 옵션: ${JSON.stringify(debugOptions, null, 2)}`);
+          core.debug(JSON.stringify(debugOptions, null, 2));
         }
 
+        // 리뷰어 옵션 업데이트 전 디버그 로그
+        core.debug(`${name} 리뷰어 옵션 업데이트 시작`);
+        
         // 리뷰어 옵션 업데이트
         if ('options' in reviewer) {
-          (reviewer as any).options = reviewerOptions;
+          try {
+            (reviewer as any).options = reviewerOptions;
+            core.debug(`${name} 리뷰어 옵션 업데이트 완료`);
+          } catch (error) {
+            core.error(`${name} 리뷰어 옵션 업데이트 중 오류 발생: ${error}`);
+          }
         }
 
         if (await reviewer.isEnabled()) {
