@@ -141,7 +141,7 @@ export default class AIReviewer implements Reviewer {
     try {
       if (this._options.debug) {
         console.log('OpenAI API 호출 시작...');
-        console.log(`사용 모델: ${this._options.model || 'gpt-4'}`);
+        console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
         console.log(`출력 언어: ${this._options.language || 'ko'}`);
       }
 
@@ -150,7 +150,7 @@ export default class AIReviewer implements Reviewer {
         : '당신은 전문적인 코드 리뷰어입니다. 코드의 품질, 가독성, 성능, 보안 측면에서 개선사항을 제안해주세요.';
 
       const response = await this.openai.chat.completions.create({
-        model: this._options.model || 'gpt-4',
+        model: this._options.model || 'gpt-4o',
         messages: [
           {
             role: 'system',
