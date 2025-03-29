@@ -11,10 +11,10 @@ export default class AIReviewer implements Reviewer {
   private readonly name = 'AIReviewer';
 
   constructor(options: ReviewerOptions = {}) {
-    console.log('AI 리뷰어 생성자 호출됨');
     this._options = options;
     
     if (this._options.debug) {
+      console.log('AI 리뷰어 생성자 호출됨');
       console.log('AI 리뷰어 초기 옵션:');
       console.log(JSON.stringify({ ...this._options, apiKey: this._options.apiKey ? '***' : undefined }, null, 2));
     }
@@ -23,7 +23,9 @@ export default class AIReviewer implements Reviewer {
   }
 
   private initializeOpenAI() {
-    console.log('AI 리뷰어 OpenAI 초기화 시작');
+    if (this._options.debug) {
+      console.log('AI 리뷰어 OpenAI 초기화 시작');
+    }
     
     if (!this._options.apiKey) {
       const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
@@ -33,9 +35,9 @@ export default class AIReviewer implements Reviewer {
 
     try {
       this.openai = new OpenAI({ apiKey: this._options.apiKey });
-      console.log('OpenAI 클라이언트가 성공적으로 초기화되었습니다.');
       
       if (this._options.debug) {
+        console.log('OpenAI 클라이언트가 성공적으로 초기화되었습니다.');
         console.log('AI 리뷰어 초기화됨');
         const debugConfig = { ...this._options, apiKey: '***' };
         console.log(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
@@ -46,23 +48,22 @@ export default class AIReviewer implements Reviewer {
     }
   }
 
-  // options getter/setter 추가
   get options(): ReviewerOptions {
     return this._options;
   }
 
   set options(newOptions: ReviewerOptions) {
-    console.log('AI 리뷰어 옵션 업데이트 시작');
     this._options = newOptions;
     
     if (this._options.debug) {
+      console.log('AI 리뷰어 옵션 업데이트 시작');
       console.log('AI 리뷰어 옵션이 업데이트되었습니다.');
       const debugConfig = { ...this._options, apiKey: '***' };
       console.log(`새 설정: ${JSON.stringify(debugConfig, null, 2)}`);
+      console.log('AI 리뷰어 옵션 업데이트 완료');
     }
     
     this.initializeOpenAI();
-    console.log('AI 리뷰어 옵션 업데이트 완료');
   }
 
   async isEnabled(): Promise<boolean> {
@@ -82,7 +83,6 @@ export default class AIReviewer implements Reviewer {
       console.log(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
     }
 
-    // 파일 패턴이 지정되지 않은 경우 기본값 사용
     const targetFiles = files.length > 0 ? files : fsSync.readdirSync(workdir)
       .filter(file => {
         const isTargetFile = file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.tsx');
@@ -113,11 +113,10 @@ export default class AIReviewer implements Reviewer {
           });
         }
 
-        // 각 제안사항을 개별 ReviewResult로 변환
         suggestions.forEach((suggestion, index) => {
           results.push({
             file: filePath,
-            line: 1, // OpenAI API는 특정 라인 정보를 제공하지 않으므로 기본값 사용
+            line: 1,
             message: suggestion,
             severity: 'info',
             reviewer: this.name

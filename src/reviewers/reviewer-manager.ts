@@ -34,7 +34,6 @@ export class ReviewerManager {
 
     for (const [name, reviewer] of this.reviewers.entries()) {
       try {
-        // 리뷰어별 옵션 설정
         const reviewerType = name.replace('Reviewer', '').toLowerCase();
         const reviewerOptions: ReviewerOptions = {
           ...this.options,
@@ -52,16 +51,15 @@ export class ReviewerManager {
           console.log(`${name} 리뷰어에 전달되는 옵션:`);
           const debugOptions = { ...reviewerOptions, apiKey: reviewerOptions.apiKey ? '***' : undefined };
           console.log(JSON.stringify(debugOptions, null, 2));
+          console.log(`${name} 리뷰어 옵션 업데이트 시작`);
         }
-
-        // 리뷰어 옵션 업데이트 전 디버그 로그
-        console.log(`${name} 리뷰어 옵션 업데이트 시작`);
         
-        // 리뷰어 옵션 업데이트
         if ('options' in reviewer) {
           try {
             (reviewer as any).options = reviewerOptions;
-            console.log(`${name} 리뷰어 옵션 업데이트 완료`);
+            if (this.options.debug) {
+              console.log(`${name} 리뷰어 옵션 업데이트 완료`);
+            }
           } catch (error) {
             core.error(`${name} 리뷰어 옵션 업데이트 중 오류 발생: ${error}`);
           }
@@ -72,7 +70,6 @@ export class ReviewerManager {
             console.log(`${name} 리뷰어 실행 중...`);
           }
 
-          // 파일 패턴에 따라 검사할 파일 목록 생성
           const files = await this.getTargetFiles(name);
           if (this.options.debug) {
             console.log(`${name} 리뷰어가 검사할 파일 수: ${files.length}`);
@@ -97,7 +94,6 @@ export class ReviewerManager {
       }
     }
 
-    // 결과를 파일에 저장
     await this.saveResults(results);
 
     if (this.options.debug) {
@@ -116,16 +112,10 @@ export class ReviewerManager {
     try {
       const allFiles = await fs.readdir(workdir);
       return allFiles.filter(file => {
-        // 기본 파일 타입 필터링
         const isSourceFile = file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.tsx');
-        
-        // 파일 패턴 매칭
         const matchesPattern = !this.options.filePatterns?.length ||
           this.options.filePatterns.some(pattern => file.match(pattern));
-        
-        // 제외 패턴 확인
         const isExcluded = this.options.excludePatterns?.some(pattern => file.match(pattern));
-
         return isSourceFile && matchesPattern && !isExcluded;
       });
     } catch (error) {
@@ -147,10 +137,8 @@ export class ReviewerManager {
 
   private async saveResults(results: ReviewResult[]): Promise<void> {
     try {
-      // 결과 디렉토리 생성
       await fs.mkdir(this.resultsDir, { recursive: true });
       
-      // 결과 파일 저장
       const resultsFile = path.join(this.resultsDir, 'review-results.json');
       await fs.writeFile(resultsFile, JSON.stringify(results, null, 2));
       
@@ -158,7 +146,6 @@ export class ReviewerManager {
         console.log(`리뷰 결과가 ${resultsFile}에 저장되었습니다.`);
       }
 
-      // 마크다운 요약 생성 및 저장
       const summary = await this.generateSummary(results);
       const summaryFile = path.join(this.resultsDir, 'review-summary.md');
       await fs.writeFile(summaryFile, summary);
@@ -174,10 +161,8 @@ export class ReviewerManager {
   async generateSummary(results: ReviewResult[]): Promise<string> {
     let summary = '# 코드 품질 검사 결과 요약\n\n';
     
-    // 전체 통계
     summary += `총 ${results.length}개의 문제가 발견되었습니다.\n\n`;
 
-    // 리뷰어별 요약
     const reviewerGroups = results.reduce((groups, result) => {
       const reviewer = result.reviewer;
       if (!groups[reviewer]) {
@@ -191,7 +176,6 @@ export class ReviewerManager {
       summary += `## ${reviewer} 검사 결과\n`;
       summary += `- 발견된 문제: ${reviewerResults.length}개\n\n`;
 
-      // 심각도별 통계
       const severityCounts = reviewerResults.reduce((counts, result) => {
         counts[result.severity] = (counts[result.severity] || 0) + 1;
         return counts;
@@ -203,7 +187,6 @@ export class ReviewerManager {
       }
       summary += '\n';
 
-      // 파일별 그룹화
       const fileGroups = reviewerResults.reduce((groups, result) => {
         if (!groups[result.file]) {
           groups[result.file] = [];
