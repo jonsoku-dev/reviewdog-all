@@ -41,6 +41,7 @@ export class ReviewerManager {
           enabled: process.env[`${reviewerType.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
           apiKey: process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_KEY`],
           model: process.env[`${reviewerType.toUpperCase()}_REVIEWER_MODEL`],
+          language: (process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_LANGUAGE`] || 'ko') as 'ko' | 'en' | 'ja',
           maxTokens: parseInt(process.env[`${reviewerType.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
           temperature: parseFloat(process.env[`${reviewerType.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
           filePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
@@ -166,41 +167,67 @@ export class ReviewerManager {
           // 메시지를 줄바꿈으로 분리하여 처리
           const lines = result.message.split('\n');
           let inCodeBlock = false;
+          let isCurrentCode = false;
+          let isImprovedCode = false;
+          let currentCodeBlock = '';
+          let improvedCodeBlock = '';
           
           for (const line of lines) {
             const trimmedLine = line.trim();
             
-            // 코드 블록 시작/끝 처리
+            // 현재 코드와 개선된 코드 블록 처리
             if (trimmedLine.startsWith('```')) {
-              inCodeBlock = !inCodeBlock;
-              summaryContent += line + '\n';
-              continue;
+              if (!inCodeBlock) {
+                inCodeBlock = true;
+                // 이전 코드 블록이 "현재 코드:" 다음에 나오는지 확인
+                isCurrentCode = lines[lines.indexOf(line) - 1]?.trim() === '현재 코드:';
+                // 이전 코드 블록이 "개선된 코드:" 다음에 나오는지 확인
+                isImprovedCode = lines[lines.indexOf(line) - 1]?.trim() === '개선된 코드:';
+                continue;
+              } else {
+                inCodeBlock = false;
+                if (isCurrentCode) {
+                  currentCodeBlock = currentCodeBlock.trim();
+                } else if (isImprovedCode) {
+                  improvedCodeBlock = improvedCodeBlock.trim();
+                }
+                continue;
+              }
             }
             
-            // 코드 블록 내부 라인은 그대로 유지
+            // 코드 블록 내부 라인 처리
             if (inCodeBlock) {
-              summaryContent += line + '\n';
+              if (isCurrentCode) {
+                currentCodeBlock += line + '\n';
+              } else if (isImprovedCode) {
+                improvedCodeBlock += line + '\n';
+              } else {
+                summaryContent += line + '\n';
+              }
               continue;
             }
             
             // 일반 텍스트 라인 처리
             if (trimmedLine) {
-              if (trimmedLine.startsWith('**')) {
+              if (trimmedLine === '현재 코드:' || trimmedLine === '개선된 코드:') {
+                continue; // 이 라벨들은 건너뜁니다
+              } else if (trimmedLine.startsWith('**')) {
                 // 볼드 텍스트는 그대로 유지
                 summaryContent += trimmedLine + '\n';
               } else if (trimmedLine.startsWith('-')) {
                 // 리스트 아이템은 그대로 유지
                 summaryContent += trimmedLine + '\n';
-              } else if (trimmedLine.startsWith('const ') || 
-                        trimmedLine.startsWith('function ') || 
-                        trimmedLine.startsWith('let ') || 
-                        trimmedLine.startsWith('var ')) {
-                // 단일 라인 코드는 인라인 코드 블록으로 변환
-                summaryContent += `\`${trimmedLine}\`\n`;
               } else {
                 summaryContent += trimmedLine + '\n';
               }
             }
+          }
+          
+          // 현재 코드와 개선된 코드가 모두 있는 경우 비교 테이블 생성
+          if (currentCodeBlock && improvedCodeBlock) {
+            summaryContent += '\n<table>\n<tr><th>현재 코드</th><th>개선된 코드</th></tr>\n';
+            summaryContent += '<tr><td>\n\n```javascript\n' + currentCodeBlock + '\n```\n\n</td>';
+            summaryContent += '<td>\n\n```javascript\n' + improvedCodeBlock + '\n```\n\n</td></tr>\n</table>\n\n';
           }
           
           summaryContent += '\n---\n\n';
