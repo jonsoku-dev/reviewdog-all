@@ -132,18 +132,15 @@ export class ReviewerManager {
       }, {} as Record<string, number>);
 
       // 요약 생성
-      await core.summary
-        .addHeading('코드 품질 검사 결과')
-        .addRaw('\n')
-        .addRaw(`총 ${groupedResults.length}개의 문제가 발견되었습니다.`)
-        .addRaw('\n\n')
-        .addHeading('심각도별 통계', 3)
-        .addList(
-          Object.entries(severityCounts).map(
-            ([severity, count]) => `${severity}: ${count}개`
-          )
-        )
-        .addRaw('\n');
+      let summaryContent = '# 코드 품질 검사 결과\n\n';
+      summaryContent += `총 ${groupedResults.length}개의 문제가 발견되었습니다.\n\n`;
+      
+      // 심각도별 통계
+      summaryContent += '### 심각도별 통계\n';
+      Object.entries(severityCounts).forEach(([severity, count]) => {
+        summaryContent += `- ${severity}: ${count}개\n`;
+      });
+      summaryContent += '\n';
 
       // 리뷰어별 결과 추가
       const reviewerGroups = groupedResults.reduce((groups, result) => {
@@ -155,9 +152,7 @@ export class ReviewerManager {
       }, {} as Record<string, ReviewResult[]>);
 
       for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
-        await core.summary
-          .addHeading(`${reviewer} (${reviewerResults.length}개)`, 3)
-          .addRaw('\n');
+        summaryContent += `### ${reviewer} (${reviewerResults.length}개)\n\n`;
 
         for (const result of reviewerResults) {
           const severityIcon = {
@@ -166,14 +161,56 @@ export class ReviewerManager {
             info: 'ℹ️'
           }[result.severity] || '';
 
-          await core.summary
-            .addRaw(`${severityIcon} **${result.file}:${result.line}**<br>`)
-            .addRaw(`${this.formatMessage(result.message)}`)
-            .addRaw('\n\n---\n\n');
+          summaryContent += `${severityIcon} **파일 위치: \`${result.file}:${result.line}\`**\n\n`;
+          
+          // 메시지를 줄바꿈으로 분리하여 처리
+          const lines = result.message.split('\n');
+          let inCodeBlock = false;
+          
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // 코드 블록 시작/끝 처리
+            if (trimmedLine.startsWith('```')) {
+              inCodeBlock = !inCodeBlock;
+              summaryContent += line + '\n';
+              continue;
+            }
+            
+            // 코드 블록 내부 라인은 그대로 유지
+            if (inCodeBlock) {
+              summaryContent += line + '\n';
+              continue;
+            }
+            
+            // 일반 텍스트 라인 처리
+            if (trimmedLine) {
+              if (trimmedLine.startsWith('**')) {
+                // 볼드 텍스트는 그대로 유지
+                summaryContent += trimmedLine + '\n';
+              } else if (trimmedLine.startsWith('-')) {
+                // 리스트 아이템은 그대로 유지
+                summaryContent += trimmedLine + '\n';
+              } else if (trimmedLine.startsWith('const ') || 
+                        trimmedLine.startsWith('function ') || 
+                        trimmedLine.startsWith('let ') || 
+                        trimmedLine.startsWith('var ')) {
+                // 단일 라인 코드는 인라인 코드 블록으로 변환
+                summaryContent += `\`${trimmedLine}\`\n`;
+              } else {
+                summaryContent += trimmedLine + '\n';
+              }
+            }
+          }
+          
+          summaryContent += '\n---\n\n';
         }
       }
 
-      await core.summary.write();
+      // 마크다운 내용을 GitHub Actions 요약에 추가
+      await core.summary
+        .addRaw(summaryContent)
+        .write();
 
     } catch (error) {
       core.error(`GitHub Actions 요약 생성 중 오류 발생: ${error}`);
@@ -217,26 +254,9 @@ export class ReviewerManager {
   }
 
   private formatMessage(message: string): string {
-    // 코드 블록을 인라인 코드로 변환하고 메시지를 포맷팅
-    return message
-      .split('\n')
-      .map(line => {
-        // 코드 블록 시작과 끝 제거
-        if (line.trim().startsWith('```') || line.trim() === '```') {
-          return '';
-        }
-        // 코드 블록 내부 코드는 인라인 코드로 변환
-        if (line.trim().startsWith('const ') || line.trim().startsWith('function ') || line.trim().startsWith('let ') || line.trim().startsWith('var ')) {
-          return `\`${line.trim()}\``;
-        }
-        // 일반 텍스트는 그대로 유지하고 줄바꿈 추가
-        return line.trim();
-      })
-      .filter(line => line) // 빈 줄 제거
-      .join('<br>') // 줄바꿈을 <br>로 변환
-      .replace(/\*\*/g, '✦') // 볼드 텍스트를 특수문자로 변환
-      .replace(/\s+/g, ' ') // 연속된 공백을 하나로 통합
-      .trim();
+    // 메시지 포맷팅은 이제 createActionsSummary에서 직접 처리하므로
+    // 이 메서드는 더 이상 사용되지 않습니다.
+    return message;
   }
 
   private async getTargetFiles(reviewerName: string): Promise<string[]> {
