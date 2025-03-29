@@ -12,7 +12,7 @@ async function runReviews() {
 
     // 환경 변수에서 설정 가져오기
     const enabledReviewers = process.env.ENABLED_REVIEWERS?.split(',').filter(Boolean) || [];
-    
+
     if (enabledReviewers.length === 0) {
       core.warning('활성화된 리뷰어가 없습니다.');
       return;
@@ -29,9 +29,14 @@ async function runReviews() {
       try {
         if (isDebug) {
           core.debug(`${reviewerType} 리뷰어 생성 시도...`);
+
         }
 
-        const reviewer = createReviewer(reviewerType);
+        if (!process.env) {
+          core.warning('환경 변수가 없습니다.');
+        }
+
+        const reviewer = createReviewer(reviewerType, process.env);
         if (reviewer) {
           manager.registerReviewer(reviewer);
           core.info(`${reviewerType} 리뷰어가 등록되었습니다.`);
