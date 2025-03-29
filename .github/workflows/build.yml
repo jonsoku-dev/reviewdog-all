@@ -34,7 +34,7 @@ jobs:
       - name: Check for changes in dist
         id: git-check
         run: |
-          git add dist/
+          git add -f dist/
           git status --porcelain
           echo "changes=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
         
