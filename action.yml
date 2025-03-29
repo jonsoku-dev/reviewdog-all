@@ -167,7 +167,12 @@ runs:
       shell: bash
       run: |
         cd $WORKSPACE_PATH
-        cp -r ${{ github.action_path }}/src/configs/* ./src
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          mkdir -p ${{ inputs.workdir }}
+          cp -r ${{ github.action_path }}/configs/* ${{ inputs.workdir }}/
+        else
+          cp -r ${{ github.action_path }}/configs/* ./
+        fi
         npx ts-node ./src/setup-configs.ts
 
     # 6. ESLint (with Prettier) 실행
