@@ -50,8 +50,7 @@ const versions = {
         stylelint: {
             version: '^16.2.1',
             dependencies: {
-                'stylelint-config-standard': '^36.0.0',
-                'stylelint-config-prettier': '^9.0.5'
+                'stylelint-config-standard': '^36.0.0'
             }
         },
         markdownlint: {
