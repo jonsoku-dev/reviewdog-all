@@ -173,7 +173,7 @@ runs:
         else
           cp -r ${{ github.action_path }}/configs/* ./
         fi
-        npx ts-node ./src/setup-configs.ts
+        npx ts-node ${{ github.action_path }}/src/setup-configs.ts
 
     # 6. ESLint (with Prettier) 실행
     - name: Run ESLint with Prettier
