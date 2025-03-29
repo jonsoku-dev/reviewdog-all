@@ -107,7 +107,108 @@ export class ReviewerManager {
       }, {} as Record<string, number>);
 
       // 요약 생성
-      let summaryContent = '# 코드 품질 검사 결과\n\n';
+      let summaryContent = `
+<style>
+.code-review-summary {
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  color: #24292e;
+}
+
+.code-block {
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+  font-size: 85%;
+  line-height: 1.45;
+  position: relative;
+}
+
+.code-block .line-number {
+  color: #6a737d;
+  margin-right: 16px;
+  min-width: 40px;
+  display: inline-block;
+  text-align: right;
+  user-select: none;
+}
+
+.code-block .comment {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.code-block .keyword {
+  color: #d73a49;
+  font-weight: 600;
+}
+
+.code-block .string {
+  color: #032f62;
+}
+
+.code-block .function {
+  color: #6f42c1;
+}
+
+.code-comparison {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.code-comparison th {
+  background: #f1f8ff;
+  padding: 8px 16px;
+  text-align: left;
+  border: 1px solid #c8e1ff;
+}
+
+.code-comparison td {
+  padding: 16px;
+  border: 1px solid #e1e4e8;
+  vertical-align: top;
+  width: 50%;
+}
+
+.change-summary {
+  background: #f6f8fa;
+  border-left: 4px solid #0366d6;
+  padding: 16px;
+  margin: 16px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.change-summary h4 {
+  margin-top: 0;
+  color: #0366d6;
+}
+
+.added-line {
+  background-color: #e6ffec;
+}
+
+.removed-line {
+  background-color: #ffeef0;
+}
+
+.severity-icon {
+  margin-right: 8px;
+}
+
+.file-location {
+  background: #f1f8ff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  margin: 16px 0;
+  border: 1px solid #c8e1ff;
+}
+</style>
+
+<div class="code-review-summary">
+# 코드 품질 검사 결과\n\n`;
       summaryContent += `총 ${groupedResults.length}개의 문제가 발견되었습니다.\n\n`;
       
       // 심각도별 통계
@@ -136,7 +237,8 @@ export class ReviewerManager {
             info: 'ℹ️'
           }[result.severity] || '';
 
-          summaryContent += `${severityIcon} **파일 위치: \`${result.file}:${result.line}\`**\n\n`;
+          // 파일 위치 표시 개선
+          summaryContent += `<div class="file-location">${severityIcon} **파일 위치: \`${result.file}:${result.line}\`**</div>\n\n`;
           
           // 메시지를 줄바꿈으로 분리하여 처리
           const lines = result.message.split('\n');
@@ -145,14 +247,24 @@ export class ReviewerManager {
           let isImprovedCode = false;
           let currentCodeBlock = '';
           let improvedCodeBlock = '';
+          let codeLanguage = 'typescript'; // 기본값
+          let lineNumbers = {
+            current: result.line,
+            improved: result.line
+          };
           
           for (const line of lines) {
             const trimmedLine = line.trim();
             
-            // 현재 코드와 개선된 코드 블록 처리
+            // 코드 블록 시작/종료 처리
             if (trimmedLine.startsWith('```')) {
               if (!inCodeBlock) {
                 inCodeBlock = true;
+                // 언어 감지
+                const langMatch = trimmedLine.match(/^```(\w+)/);
+                if (langMatch) {
+                  codeLanguage = langMatch[1];
+                }
                 // 이전 코드 블록이 "현재 코드:" 다음에 나오는지 확인
                 isCurrentCode = lines[lines.indexOf(line) - 1]?.trim() === '현재 코드:';
                 // 이전 코드 블록이 "개선된 코드:" 다음에 나오는지 확인
@@ -171,10 +283,13 @@ export class ReviewerManager {
             
             // 코드 블록 내부 라인 처리
             if (inCodeBlock) {
+              const processedLine = this.processCodeLine(line);
               if (isCurrentCode) {
-                currentCodeBlock += line + '\n';
+                currentCodeBlock += processedLine + '\n';
+                lineNumbers.current++;
               } else if (isImprovedCode) {
-                improvedCodeBlock += line + '\n';
+                improvedCodeBlock += processedLine + '\n';
+                lineNumbers.improved++;
               } else {
                 summaryContent += line + '\n';
               }
@@ -184,12 +299,10 @@ export class ReviewerManager {
             // 일반 텍스트 라인 처리
             if (trimmedLine) {
               if (trimmedLine === '현재 코드:' || trimmedLine === '개선된 코드:') {
-                continue; // 이 라벨들은 건너뜁니다
+                continue;
               } else if (trimmedLine.startsWith('**')) {
-                // 볼드 텍스트는 그대로 유지
                 summaryContent += trimmedLine + '\n';
               } else if (trimmedLine.startsWith('-')) {
-                // 리스트 아이템은 그대로 유지
                 summaryContent += trimmedLine + '\n';
               } else {
                 summaryContent += trimmedLine + '\n';
@@ -199,14 +312,25 @@ export class ReviewerManager {
           
           // 현재 코드와 개선된 코드가 모두 있는 경우 비교 테이블 생성
           if (currentCodeBlock && improvedCodeBlock) {
-            summaryContent += '\n<table>\n<tr><th>현재 코드</th><th>개선된 코드</th></tr>\n';
-            summaryContent += '<tr><td>\n\n```javascript\n' + currentCodeBlock + '\n```\n\n</td>';
-            summaryContent += '<td>\n\n```javascript\n' + improvedCodeBlock + '\n```\n\n</td></tr>\n</table>\n\n';
+            summaryContent += '\n<table class="code-comparison">\n<tr><th>현재 코드</th><th>개선된 코드</th></tr>\n';
+            summaryContent += '<tr><td>\n\n<div class="code-block">\n';
+            summaryContent += this.createCodeBlockWithLineNumbers(currentCodeBlock, codeLanguage, lineNumbers.current);
+            summaryContent += '\n</div>\n</td><td>\n\n<div class="code-block">\n';
+            summaryContent += this.createCodeBlockWithLineNumbers(improvedCodeBlock, codeLanguage, lineNumbers.improved);
+            summaryContent += '\n</div>\n</td></tr>\n</table>\n\n';
+            
+            // 변경사항 요약 추가
+            const changes = this.generateChangeSummary(currentCodeBlock, improvedCodeBlock);
+            if (changes) {
+              summaryContent += '<div class="change-summary">\n### 변경사항 요약\n' + changes + '</div>\n\n';
+            }
           }
           
           summaryContent += '\n---\n\n';
         }
       }
+
+      summaryContent += '</div>'; // code-review-summary div 닫기
 
       // 마크다운 내용을 GitHub Actions 요약에 추가
       await core.summary
@@ -216,6 +340,71 @@ export class ReviewerManager {
     } catch (error) {
       core.error(`GitHub Actions 요약 생성 중 오류 발생: ${error}`);
     }
+  }
+
+  private processCodeLine(line: string): string {
+    let processedLine = line;
+    
+    // 주석 강조
+    if (line.trim().startsWith('//')) {
+      return `<span class="comment">${line}</span>`;
+    }
+
+    // 문자열 강조
+    processedLine = processedLine.replace(
+      /("[^"]*"|'[^']*'|`[^`]*`)/g,
+      '<span class="string">$1</span>'
+    );
+
+    // 함수 호출 강조
+    processedLine = processedLine.replace(
+      /\b(\w+)\(/g,
+      '<span class="function">$1</span>('
+    );
+
+    // 키워드 강조
+    processedLine = processedLine.replace(
+      /(const|let|var|function|class|interface|type|import|export|return|if|else|for|while|try|catch|async|await|new|this)\b/g,
+      '<span class="keyword">$1</span>'
+    );
+
+    return processedLine;
+  }
+
+  private createCodeBlockWithLineNumbers(code: string, language: string, startLine: number): string {
+    const lines = code.split('\n');
+    const numberedLines = lines.map((line, index) => {
+      const lineNumber = startLine + index;
+      const processedLine = this.processCodeLine(line);
+      return `<div class="code-line"><span class="line-number">${lineNumber}</span>${processedLine}</div>`;
+    });
+    return numberedLines.join('\n');
+  }
+
+  private generateChangeSummary(currentCode: string, improvedCode: string): string {
+    const currentLines = currentCode.split('\n');
+    const improvedLines = improvedCode.split('\n');
+    let summary = '';
+
+    // 간단한 diff 생성
+    const addedLines = improvedLines.filter(line => !currentLines.includes(line));
+    const removedLines = currentLines.filter(line => !improvedLines.includes(line));
+
+    if (addedLines.length > 0) {
+      summary += '<h4>추가된 내용</h4>\n';
+      addedLines.forEach(line => {
+        summary += `<div class="added-line">\`${line.trim()}\`</div>\n`;
+      });
+    }
+
+    if (removedLines.length > 0) {
+      summary += '<h4>제거된 내용</h4>\n';
+      removedLines.forEach(line => {
+        summary += `<div class="removed-line">\`${line.trim()}\`</div>\n`;
+      });
+    }
+
+    return summary;
   }
 
   private groupResults(results: ReviewResult[]): ReviewResult[] {

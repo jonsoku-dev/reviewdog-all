@@ -25,7 +25,7 @@ jobs:
           debug: true
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-          ai_reviewer_api_language: ja
+          ai_reviewer_language: ja
           ai_reviewer_model: gpt-4o
           ai_reviewer_max_tokens: 1000
           ai_reviewer_temperature: 0.7
