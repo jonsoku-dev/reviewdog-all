@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import { ReviewerManager } from './reviewers/reviewer-manager';
-import { ReviewerOptions } from './types/reviewer';
+import { createReviewer } from './reviewers';
 
 async function runReviews() {
   try {
@@ -21,68 +21,27 @@ async function runReviews() {
     // ReviewerManager 인스턴스 생성
     const manager = new ReviewerManager({
       workdir: process.env.WORKSPACE_PATH || '.',
-      debug: isDebug,
-      filePatterns: process.env.FILE_PATTERNS?.split(','),
-      excludePatterns: process.env.EXCLUDE_PATTERNS?.split(',')
+      debug: isDebug
     });
 
     // 활성화된 리뷰어 등록
-    for (const reviewerName of enabledReviewers) {
+    for (const reviewerType of enabledReviewers) {
       try {
         if (isDebug) {
-          core.debug(`${reviewerName} 리뷰어 설정을 로드합니다...`);
+          core.debug(`${reviewerType} 리뷰어 생성 시도...`);
         }
 
-        // 리뷰어 설정 구성
-        const config: ReviewerOptions = {
-          // 기본 설정
-          workdir: process.env.WORKSPACE_PATH || '.',
-          enabled: process.env[`${reviewerName.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
-          debug: isDebug,
-
-          // 리뷰어별 설정
-          apiKey: process.env[`${reviewerName.toUpperCase()}_REVIEWER_API_KEY`],
-          model: process.env[`${reviewerName.toUpperCase()}_REVIEWER_MODEL`],
-          maxTokens: parseInt(process.env[`${reviewerName.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
-          temperature: parseFloat(process.env[`${reviewerName.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
-          filePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
-          excludePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',')
-        };
-
-        if (!config.enabled) {
-          core.info(`${reviewerName} 리뷰어가 설정에서 비활성화되어 있습니다.`);
-          continue;
-        }
-
-        if (isDebug) {
-          // API 키는 로그에서 제외
-          const debugConfig = { ...config, apiKey: config.apiKey ? '***' : undefined };
-          core.debug(`${reviewerName} 리뷰어 설정: ${JSON.stringify(debugConfig, null, 2)}`);
-        }
-
-        // 리뷰어 동적 로드 및 등록
-        try {
-          const ReviewerClass = await import(`./reviewers/${reviewerName}-reviewer`);
-          if (ReviewerClass) {
-            const reviewer = new ReviewerClass.default(config);
-
-            if (await reviewer.isEnabled()) {
-              manager.registerReviewer(reviewer);
-              core.info(`${reviewerName} 리뷰어가 등록되었습니다.`);
-            } else {
-              core.warning(`${reviewerName} 리뷰어가 비활성화되어 있습니다.`);
-            }
-          }
-        } catch (error: any) {
-          core.warning(`${reviewerName} 리뷰어 모듈을 찾을 수 없습니다: ${error.message}`);
-          if (isDebug) {
-            core.debug(`모듈 로드 오류 상세: ${error.stack}`);
-          }
+        const reviewer = createReviewer(reviewerType);
+        if (reviewer) {
+          manager.registerReviewer(reviewer);
+          core.info(`${reviewerType} 리뷰어가 등록되었습니다.`);
+        } else {
+          core.warning(`${reviewerType} 리뷰어를 생성할 수 없습니다.`);
         }
       } catch (error) {
-        core.warning(`${reviewerName} 리뷰어 로드 중 오류 발생: ${error}`);
+        core.warning(`${reviewerType} 리뷰어 생성 중 오류 발생: ${error}`);
         if (isDebug && error instanceof Error) {
-          core.debug(`스택 트레이스: ${error.stack || error.message}`);
+          core.debug(`스택 트레이스: ${error.stack}`);
         }
       }
     }
@@ -94,7 +53,7 @@ async function runReviews() {
   } catch (error) {
     core.error(`리뷰 실행 중 오류 발생: ${error}`);
     if (process.env.DEBUG === 'true' && error instanceof Error) {
-      core.debug(`스택 트레이스: ${error.stack || error.message}`);
+      core.debug(`스택 트레이스: ${error.stack}`);
     }
     if (process.env.FAIL_ON_ERROR === 'true') {
       core.setFailed(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
