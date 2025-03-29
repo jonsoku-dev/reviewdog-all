@@ -40,7 +40,7 @@ inputs:
   ai_reviewer_model:
     description: "사용할 AI 모델"
     required: false
-    default: "gpt-4o"
+    default: "gpt-4"
     
   ai_reviewer_max_tokens:
     description: "최대 토큰 수"
@@ -107,11 +107,20 @@ runs:
           set -x
         fi
 
+        # workdir이 기본값이 아닌 경우 파일 복사
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          echo "사용자 지정 workdir에서 파일 복사 중..."
+          mkdir -p ${{ github.action_path }}/workspace
+          cp -r ${{ github.workspace }}/${{ inputs.workdir }}/* ${{ github.action_path }}/workspace/
+          echo "WORKSPACE_PATH=${{ github.action_path }}/workspace" >> $GITHUB_ENV
+        else
+          echo "WORKSPACE_PATH=${{ github.workspace }}" >> $GITHUB_ENV
+        fi
+
         # 기본 설정
         echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
         echo "FAIL_ON_ERROR=${{ inputs.fail_on_error }}" >> $GITHUB_ENV
         echo "COMMENT_MODE=${{ inputs.comment_mode }}" >> $GITHUB_ENV
-        echo "GITHUB_WORKSPACE=${{ inputs.workdir }}" >> $GITHUB_ENV
 
         # AI 리뷰어 설정
         echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV
@@ -156,22 +165,22 @@ runs:
     # 3. 작업 공간 설정 및 패키지 설치
     - name: Setup workspace
       shell: bash
-      working-directory: ${{ inputs.workdir }}
       run: |
+        cd $WORKSPACE_PATH
         npm install
 
     # 4. 리뷰어 실행
     - name: Run reviewers
       shell: bash
-      working-directory: ${{ inputs.workdir }}
       run: |
-        cp -r ${{ github.action_path }}/src ${{ github.action_path }}/${{ inputs.workdir }}/src
-        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/src/run-reviews.ts
+        cd $WORKSPACE_PATH
+        cp -r ${{ github.action_path }}/src ./src
+        npx ts-node ./src/run-reviews.ts
 
     # 5. 리뷰 결과 보고
     - name: Report results
       shell: bash
-      working-directory: ${{ inputs.workdir }}
       run: |
-        cp -r ${{ github.action_path }}/src ${{ github.action_path }}/${{ inputs.workdir }}/src
-        npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/src/report-results.ts
+        cd $WORKSPACE_PATH
+        cp -r ${{ github.action_path }}/src ./src
+        npx ts-node ./src/report-results.ts
