@@ -1,10 +1,35 @@
-const OpenAI = require('openai');
-// const { getOctokit, context } = require('@actions/github');
-const core = require('@actions/core');
-const fs = require('fs');
-const path = require('path');
+import OpenAI from 'openai';
+// import { getOctokit, context } from '@actions/github';
+import * as core from '@actions/core';
+import { promises as fs } from 'fs';
+import * as fsSync from 'fs';
+import * as path from 'path';
 
-async function runAICodeReview() {
+// 타입 정의
+interface ReviewResult {
+  file: string;
+  suggestions: string[];
+}
+
+interface JsonResult {
+  files_reviewed: number;
+  total_issues: number;
+  reviews: Array<{
+    file: string;
+    suggestions_count: number;
+    suggestions: string[];
+  }>;
+}
+
+type ReviewLevel = 'basic' | 'detailed' | 'security' | 'performance';
+
+interface OpenAIError extends Error {
+  response?: {
+    data: any;
+  };
+}
+
+async function runAICodeReview(): Promise<void> {
   try {
     // 환경변수 디버깅
     console.log('=== 환경변수 디버깅 ===');
@@ -18,7 +43,7 @@ async function runAICodeReview() {
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
     // const githubToken = process.env.GITHUB_TOKEN;
-    const reviewLevel = process.env.AI_REVIEW_LEVEL || 'basic';
+    const reviewLevel = (process.env.AI_REVIEW_LEVEL || 'basic') as ReviewLevel;
     const suggestionsLimit = parseInt(process.env.AI_SUGGESTIONS_LIMIT || '5');
 
     // OpenAI 클라이언트 초기화 디버깅
@@ -36,10 +61,10 @@ async function runAICodeReview() {
     // const octokit = getOctokit(githubToken);
 
     // 테스트용 임시 코드 (실제 PR 변경 파일 대신 현재 디렉토리의 .js 파일들을 검사)
-    const testFiles = fs.readdirSync('.').filter(file => file.endsWith('.js'));
+    const testFiles = fsSync.readdirSync('.').filter((file: string) => file.endsWith('.js'));
     core.debug(`검토할 파일 수: ${testFiles.length}`);
     
-    const reviews = [];
+    const reviews: ReviewResult[] = [];
     let totalSuggestions = 0;
 
     for (const file of testFiles) {
@@ -47,7 +72,7 @@ async function runAICodeReview() {
 
       try {
         // 파일 내용 읽기
-        const fileContent = fs.readFileSync(file, 'utf8');
+        const fileContent = fsSync.readFileSync(file, 'utf8');
         core.debug(`파일 내용 로드 완료: ${file} (${fileContent.length} 바이트)`);
         
         // AI 리뷰 프롬프트 생성
@@ -56,10 +81,10 @@ async function runAICodeReview() {
         
         // OpenAI API 호출 준비
         const requestParams = {
-          model: 'gpt-4o',
+          model: 'gpt-4',
           messages: [
-            { role: 'system', content: '당신은 전문적인 코드 리뷰어입니다.' },
-            { role: 'user', content: prompt }
+            { role: 'system' as const, content: '당신은 전문적인 코드 리뷰어입니다.' },
+            { role: 'user' as const, content: prompt }
           ],
           max_tokens: 1000,
           temperature: 0.7,
@@ -79,6 +104,8 @@ async function runAICodeReview() {
         }
 
         const suggestions = response.choices[0].message.content;
+        if (!suggestions) continue;
+
         const suggestionsList = suggestions.split('\n').slice(0, suggestionsLimit);
         totalSuggestions += suggestionsList.length;
         core.debug(`AI 제안 수신 완료 (${suggestionsList.length} 줄)`);
@@ -90,8 +117,9 @@ async function runAICodeReview() {
         
         core.debug(`파일 분석 완료: ${file}`);
         
-      } catch (fileError) {
-        core.warning(`파일 ${file} 처리 중 오류 발생: ${fileError.message}`);
+      } catch (error) {
+        const err = error as Error;
+        core.warning(`파일 ${file} 처리 중 오류 발생: ${err.message}`);
         continue;
       }
     }
@@ -100,7 +128,7 @@ async function runAICodeReview() {
 
     // 리뷰 결과를 파일로 저장
     const reviewResult = formatReviewComment(reviews);
-    fs.writeFileSync('ai-review-result.md', reviewResult);
+    fsSync.writeFileSync('ai-review-result.md', reviewResult);
     core.debug('리뷰 결과를 ai-review-result.md 파일에 저장했습니다.');
     
     // GitHub Actions outputs 설정
@@ -113,11 +141,12 @@ async function runAICodeReview() {
     core.exportVariable('AI_REVIEW_FAILED', 'false');
     
   } catch (error) {
+    const err = error as OpenAIError;
     core.error('상세 에러 정보:');
-    core.error(error.stack || error.message);
-    if (error.response) {
+    core.error(err.stack || err.message);
+    if (err.response) {
       core.error('API 응답 에러:');
-      core.error(JSON.stringify(error.response.data, null, 2));
+      core.error(JSON.stringify(err.response.data, null, 2));
     }
     
     // 에러 발생 시 환경 변수 설정
@@ -125,14 +154,14 @@ async function runAICodeReview() {
     core.exportVariable('AI_REVIEW_OUTCOME', 'failure');
     core.exportVariable('AI_REVIEW_FAILED', 'true');
     
-    core.setFailed(`AI 코드 리뷰 실패: ${error.message}`);
+    core.setFailed(`AI 코드 리뷰 실패: ${err.message}`);
   }
 }
 
-function generateReviewPrompt(code, level) {
+function generateReviewPrompt(code: string, level: ReviewLevel): string {
   const basePrompt = '다음 코드를 리뷰하고 개선사항을 제안해주세요:';
   
-  const levelSpecificPrompts = {
+  const levelSpecificPrompts: Record<ReviewLevel, string> = {
     basic: '코드 스타일과 기본적인 개선사항에 집중해주세요.',
     detailed: '코드 구조, 성능, 유지보수성 관점에서 상세한 리뷰를 해주세요.',
     security: '보안 취약점과 잠재적인 위험요소를 중점적으로 검토해주세요.',
@@ -142,8 +171,8 @@ function generateReviewPrompt(code, level) {
   return `${basePrompt}\n${levelSpecificPrompts[level]}\n\n${code}`;
 }
 
-function formatReviewComment(reviews) {
-  let comment = '## �� AI 코드 리뷰 결과\n\n';
+function formatReviewComment(reviews: ReviewResult[]): string {
+  let comment = '## 🤖 AI 코드 리뷰 결과\n\n';
   let totalIssues = 0;
   
   reviews.forEach(review => {
@@ -162,10 +191,10 @@ function formatReviewComment(reviews) {
     comment;
   
   // 결과를 파일로 저장
-  fs.writeFileSync('ai-review-result.md', comment);
+  fsSync.writeFileSync('ai-review-result.md', comment);
   
   // 결과를 JSON 형식으로도 저장 (collect-results.js에서 사용)
-  const jsonResult = {
+  const jsonResult: JsonResult = {
     files_reviewed: reviews.length,
     total_issues: totalIssues,
     reviews: reviews.map(review => ({
@@ -174,7 +203,7 @@ function formatReviewComment(reviews) {
       suggestions: review.suggestions
     }))
   };
-  fs.writeFileSync('ai-review-result.json', JSON.stringify(jsonResult, null, 2));
+  fsSync.writeFileSync('ai-review-result.json', JSON.stringify(jsonResult, null, 2));
   
   return comment;
 }

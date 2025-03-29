@@ -255,7 +255,7 @@ runs:
         INPUT_SKIP_AI_REVIEW: ${{ inputs.skip_ai_review }}
         INPUT_SKIP_ACCESSIBILITY: ${{ inputs.skip_accessibility }}
       run: |
-        node ${{ github.action_path }}/setup-workspace.js
+        npx ts-node ${{ github.action_path }}/src/setup-workspace.ts
 
     # 5. 설정 파일 생성
     - name: Setup configurations
@@ -272,7 +272,7 @@ runs:
         INPUT_MARKDOWNLINT_CONFIG_PATH: ${{ inputs.markdownlint_config_path }}
         INPUT_AXE_CONFIG_PATH: ${{ inputs.axe_config_path }}
       run: |
-        node ${{ github.action_path }}/setup-configs.js
+        npx ts-node ${{ github.action_path }}/src/setup-configs.ts
 
     # AI 코드 리뷰
     - name: Run AI Code Review
@@ -288,8 +288,7 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        cp ${{ github.action_path }}/code-review.js ${{github.action_path}}/${{ inputs.workdir }}/code-review.js
-        node ${{ github.action_path }}/${{ inputs.workdir }}/code-review.js
+        npx ts-node ${{ github.action_path }}/src/code-review.ts
 
     - name: Record AI Review Result
       if: inputs.skip_ai_review != 'true'
@@ -314,8 +313,7 @@ runs:
         NODE_PATH: ${{ inputs.workdir }}/node_modules
       working-directory: ${{ inputs.workdir }}
       run: |
-        cp ${{ github.action_path }}/check.js ${{github.action_path}}/${{ inputs.workdir }}/check.js
-        node ${{ github.action_path }}/${{ inputs.workdir }}/check.js
+        npx ts-node ${{ github.action_path }}/src/check.ts
 
     - name: Record Accessibility Result
       if: inputs.skip_accessibility != 'true'
@@ -441,8 +439,7 @@ runs:
         AI_REVIEW_OUTCOME: ${{ env.AI_REVIEW_OUTCOME }}
         AI_REVIEW_FAILED: ${{ env.AI_REVIEW_FAILED }}
       run: |
-        cp ${{ github.action_path }}/collect-results.js ${{github.action_path}}/${{ inputs.workdir }}/collect-results.js
-        node ${{ github.action_path }}/${{ inputs.workdir }}/collect-results.js
+        npx ts-node ${{ github.action_path }}/src/collect-results.ts
 
     # 11. Slack 통지
     - name: Send Slack Notification
@@ -455,5 +452,4 @@ runs:
         SLACK_ICON_EMOJI: ${{ inputs.slack_icon_emoji }}
         SLACK_TOKEN: ${{ inputs.slack_token }}
       run: |
-        cp ${{ github.action_path }}/slack.js ${{github.action_path}}/${{ inputs.workdir }}/slack.js
-        node ${{ github.action_path }}/${{ inputs.workdir }}/slack.js
+        npx ts-node ${{ github.action_path }}/src/slack.ts

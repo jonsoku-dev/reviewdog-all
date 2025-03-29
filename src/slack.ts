@@ -1,7 +1,76 @@
-const https = require('https');
-const url = require('url');
+import * as https from 'https';
+import * as http from 'http';
+import * as url from 'url';
+import * as fs from 'fs';
 
-async function sendSlackNotification() {
+interface StatusConfig {
+  emoji: string;
+  color: string;
+  header: string;
+}
+
+interface LintResult {
+  status: 'success' | 'failed';
+  repository: string;
+  repository_url: string;
+  commit: string;
+  commit_url: string;
+  workflow_url: string;
+  pr?: {
+    number: number;
+    url: string;
+    head: string;
+    base: string;
+  };
+  results: Array<{
+    name: string;
+    status: 'success' | 'failed' | 'skipped';
+    details?: string;
+    reviewFilePath?: string;
+  }>;
+  failed_linters: Array<{
+    name: string;
+    details?: string;
+    reviewFilePath?: string;
+  }>;
+}
+
+interface SlackBlock {
+  type: string;
+  text?: {
+    type: string;
+    text: string;
+    emoji?: boolean;
+  };
+  fields?: Array<{
+    type: string;
+    text: string;
+  }>;
+  elements?: Array<{
+    type: string;
+    text: string;
+  }>;
+}
+
+interface SlackMessage {
+  channel?: string;
+  username: string;
+  icon_emoji: string;
+  blocks: SlackBlock[];
+  attachments: Array<{
+    color: string;
+    blocks: SlackBlock[];
+  }>;
+}
+
+interface RequestOptions extends https.RequestOptions {
+  headers: {
+    'Content-Type': string;
+    'Authorization'?: string;
+  };
+}
+
+async function sendSlackNotification(): Promise<void> {
   const {
     SLACK_WEBHOOK_URL,
     SLACK_CHANNEL,
@@ -15,20 +84,26 @@ async function sendSlackNotification() {
     throw new Error('SLACK_WEBHOOK_URL이 설정되지 않았습니다.');
   }
 
+  if (!LINT_RESULTS) {
+    throw new Error('LINT_RESULTS가 설정되지 않았습니다.');
+  }
+
   // Enterprise Slack URL 처리
   const webhookUrl = SLACK_WEBHOOK_URL.startsWith('slack://')
     ? `https://${SLACK_WEBHOOK_URL.slice(8)}/api/chat.postMessage`
     : SLACK_WEBHOOK_URL;
 
   // 린트 결과 파싱
-  const results = JSON.parse(LINT_RESULTS);
+  const results = JSON.parse(LINT_RESULTS) as LintResult;
   
-  const statusConfig = {
+  const statusConfigs: Record<'success' | 'failed', StatusConfig> = {
     'success': { emoji: '✅', color: '#36a64f', header: '모든 검사가 통과되었습니다' },
     'failed': { emoji: '❌', color: '#dc3545', header: '일부 검사가 실패했습니다' }
-  }[results.status];
+  };
 
-  const message = {
+  const statusConfig = statusConfigs[results.status];
+
+  const message: SlackMessage = {
     channel: SLACK_CHANNEL,
     username: SLACK_USERNAME || 'Lint Action Bot',
     icon_emoji: SLACK_ICON_EMOJI || ':lint:',
@@ -93,12 +168,13 @@ async function sendSlackNotification() {
 
   // 각 린터별 결과 추가
   results.results.forEach(result => {
-    const statusEmoji = {
+    const statusEmojis: Record<'success' | 'failed' | 'skipped', string> = {
       success: '✅',
       failed: '❌',
       skipped: '⏭️'
-    }[result.status];
+    };
 
+    const statusEmoji = statusEmojis[result.status];
     const statusText = result.status === 'failed' ? '실패' : result.status === 'success' ? '통과' : '스킵됨';
     let text = `${statusEmoji} *${result.name}*: ${statusText}`;
     
@@ -111,7 +187,7 @@ async function sendSlackNotification() {
         // AI 리뷰 파일이 있는 경우 추가
         if (result.reviewFilePath) {
           try {
-            const reviewContent = require('fs').readFileSync(result.reviewFilePath, 'utf8');
+            const reviewContent = fs.readFileSync(result.reviewFilePath, 'utf8');
             text += `\n\n*상세 리뷰 내용:*\n${reviewContent}`;
           } catch (error) {
             console.warn('AI 리뷰 파일을 읽을 수 없습니다:', error);
@@ -137,7 +213,11 @@ async function sendSlackNotification() {
   if (results.status === 'failed' && results.failed_linters.length > 0) {
     message.attachments[0].blocks.push(
       {
-        type: "divider"
+        type: "divider",
+        text: {
+          type: "mrkdwn",
+          text: ""
+        }
       },
       {
         type: "section",
@@ -160,7 +240,7 @@ async function sendSlackNotification() {
           // AI 리뷰 파일이 있는 경우 추가
           if (linter.reviewFilePath) {
             try {
-              const reviewContent = require('fs').readFileSync(linter.reviewFilePath, 'utf8');
+              const reviewContent = fs.readFileSync(linter.reviewFilePath, 'utf8');
               detailsText += `\n\n*상세 리뷰 내용:*\n${reviewContent}`;
             } catch (error) {
               console.warn('AI 리뷰 파일을 읽을 수 없습니다:', error);
@@ -186,7 +266,11 @@ async function sendSlackNotification() {
   // 워크플로우 링크 추가
   message.attachments[0].blocks.push(
     {
-      type: "divider"
+      type: "divider",
+      text: {
+        type: "mrkdwn",
+        text: ""
+      }
     },
     {
       type: "context",
@@ -201,7 +285,7 @@ async function sendSlackNotification() {
 
   const parsedUrl = url.parse(webhookUrl);
   
-  const options = {
+  const options: RequestOptions = {
     hostname: parsedUrl.hostname,
     path: parsedUrl.path,
     method: 'POST',
@@ -214,11 +298,11 @@ async function sendSlackNotification() {
     options.headers['Authorization'] = `Bearer ${process.env.SLACK_TOKEN}`;
   }
 
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
+  return new Promise<void>((resolve, reject) => {
+    const req = https.request(options, (res: http.IncomingMessage) => {
       let data = '';
       
-      res.on('data', (chunk) => {
+      res.on('data', (chunk: Buffer) => {
         data += chunk;
       });
 
@@ -232,7 +316,7 @@ async function sendSlackNotification() {
       });
     });
 
-    req.on('error', (error) => {
+    req.on('error', (error: Error) => {
       console.error('❌ Slack 통지 전송 실패:', error);
       reject(error);
     });
