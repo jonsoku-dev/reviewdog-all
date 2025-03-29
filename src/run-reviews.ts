@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { ReviewerManager } from './reviewers/reviewer-manager';
+import { ReviewerOptions } from './types/reviewer';
 
 async function runReviews() {
   try {
@@ -7,12 +8,6 @@ async function runReviews() {
     const isDebug = process.env.DEBUG === 'true';
     if (isDebug) {
       core.info('디버그 모드가 활성화되었습니다.');
-      core.debug('환경 변수:');
-      Object.entries(process.env).forEach(([key, value]) => {
-        if (key.includes('REVIEWER') || key.includes('GITHUB')) {
-          core.debug(`${key}: ${value}`);
-        }
-      });
     }
 
     // 환경 변수에서 설정 가져오기
@@ -24,7 +19,12 @@ async function runReviews() {
     }
 
     // ReviewerManager 인스턴스 생성
-    const manager = new ReviewerManager();
+    const manager = new ReviewerManager({
+      workdir: process.env.WORKSPACE_PATH || '.',
+      debug: isDebug,
+      filePatterns: process.env.FILE_PATTERNS?.split(','),
+      excludePatterns: process.env.EXCLUDE_PATTERNS?.split(',')
+    });
 
     // 활성화된 리뷰어 등록
     for (const reviewerName of enabledReviewers) {
@@ -34,14 +34,19 @@ async function runReviews() {
         }
 
         // 리뷰어 설정 구성
-        const config = {
+        const config: ReviewerOptions = {
+          // 기본 설정
+          workdir: process.env.WORKSPACE_PATH || '.',
           enabled: process.env[`${reviewerName.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
-          apiKey: process.env[`${reviewerName.toUpperCase()}_REVIEWER_API_KEY`] || '',
-          model: process.env[`${reviewerName.toUpperCase()}_REVIEWER_MODEL`] || '',
+          debug: isDebug,
+
+          // 리뷰어별 설정
+          apiKey: process.env[`${reviewerName.toUpperCase()}_REVIEWER_API_KEY`],
+          model: process.env[`${reviewerName.toUpperCase()}_REVIEWER_MODEL`],
           maxTokens: parseInt(process.env[`${reviewerName.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
           temperature: parseFloat(process.env[`${reviewerName.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
-          filePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(',') || [],
-          excludePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',') || []
+          filePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
+          excludePatterns: process.env[`${reviewerName.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',')
         };
 
         if (!config.enabled) {
@@ -50,17 +55,16 @@ async function runReviews() {
         }
 
         if (isDebug) {
-          core.debug(`${reviewerName} 리뷰어 설정: ${JSON.stringify(config, null, 2)}`);
+          // API 키는 로그에서 제외
+          const debugConfig = { ...config, apiKey: config.apiKey ? '***' : undefined };
+          core.debug(`${reviewerName} 리뷰어 설정: ${JSON.stringify(debugConfig, null, 2)}`);
         }
 
         // 리뷰어 동적 로드 및 등록
         try {
           const ReviewerClass = await import(`./reviewers/${reviewerName}-reviewer`);
           if (ReviewerClass) {
-            const reviewer = new ReviewerClass.default({
-              workdir: process.env.WORKSPACE_PATH || '.',
-              ...config
-            });
+            const reviewer = new ReviewerClass.default(config);
 
             if (await reviewer.isEnabled()) {
               manager.registerReviewer(reviewer);

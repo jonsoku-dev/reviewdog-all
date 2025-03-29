@@ -7,7 +7,11 @@ export interface ReviewResult {
 }
 
 export interface ReviewerOptions {
+  // 기본 설정
   workdir?: string;
+  enabled?: boolean;
+  debug?: boolean;
+  
   // AI 리뷰어 옵션
   apiKey?: string;
   model?: string;
