@@ -8,6 +8,7 @@ export const createReviewer = (type: string): Reviewer | null => {
         debug: process.env.DEBUG === 'true',
         enabled: process.env.AI_REVIEWER_ENABLED === 'true',
         apiKey: process.env.AI_REVIEWER_API_KEY,
+        language: process.env.AI_REVIEWER_API_LANGUAGE as 'ko' | 'en' | 'ja',
         model: process.env.AI_REVIEWER_MODEL,
         maxTokens: parseInt(process.env.AI_REVIEWER_MAX_TOKENS || '1000'),
         temperature: parseFloat(process.env.AI_REVIEWER_TEMPERATURE || '0.7'),
