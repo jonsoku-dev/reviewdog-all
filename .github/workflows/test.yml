@@ -26,13 +26,6 @@ jobs:
           level: warning
           fail_level: warning
           workdir: ./testdata/
-          skip_ai_review: false
-          # 접근성 검사 설정
-          skip_accessibility: false
-          accessibility_level: AA
-          color_contrast_ratio: 4.5
-          skip_aria_check: false
-          skip_alt_text_check: false
 
   test-pr-check:
     if: github.event_name == 'pull_request'
@@ -50,13 +43,6 @@ jobs:
           level: warning
           fail_level: warning
           workdir: ./testdata/
-          skip_ai_review: false
-          # 접근성 검사 설정
-          skip_accessibility: false
-          accessibility_level: AA
-          color_contrast_ratio: 4.5
-          skip_aria_check: false
-          skip_alt_text_check: false
 
   test-pr-review:
     if: github.event_name == 'pull_request'
@@ -75,13 +61,6 @@ jobs:
           level: error
           fail_level: error
           workdir: ./testdata/
-          skip_ai_review: false
-          # 접근성 검사 설정
-          skip_accessibility: false
-          accessibility_level: AA
-          color_contrast_ratio: 4.5
-          skip_aria_check: false
-          skip_alt_text_check: false
 
   test-no-config:
     name: Lint Check (No Config)
@@ -102,47 +81,3 @@ jobs:
           eslint_flags: "**/*.{js,jsx,ts,tsx}"
           stylelint_input: "**/*.css"
           markdownlint_flags: "**/*.md"
-          skip_ai_review: false
-          # 접근성 검사 설정
-          skip_accessibility: false
-          accessibility_level: AA
-          color_contrast_ratio: 4.5
-          skip_aria_check: false
-          skip_alt_text_check: false
-
-  test-slack-notification:
-    name: Slack 통지 테스트
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./
-        with:
-          github_token: ${{ secrets.github_token }}
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          reporter: github-check
-          filter_mode: nofilter
-          level: warning
-          fail_level: warning
-          workdir: ./testdata/
-          notification_type: slack
-          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          slack_channel: ${{ env.SLACK_CHANNEL }}
-          slack_username: ${{ env.SLACK_USERNAME }}
-          slack_icon_emoji: ${{ env.SLACK_ICON_EMOJI }}
-          skip_ai_review: false
-          skip_markdownlint: true
-          skip_misspell: true
-          skip_eslint: true
-          skip_stylelint: true
-          # 접근성 검사 설정
-          skip_accessibility: true
-          accessibility_level: AA
-          color_contrast_ratio: 4.5
-          skip_aria_check: false
-          skip_alt_text_check: false
-          # AI 리뷰 추가 옵션
-          ai_review_level: detailed  # 더 상세한 리뷰를 위해 'detailed' 설정
-          ai_suggestions_limit: 10   # 더 많은 제안을 받기 위해 기본값 5에서 10으로 증가
