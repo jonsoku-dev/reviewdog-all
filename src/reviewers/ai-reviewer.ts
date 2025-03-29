@@ -5,7 +5,7 @@ import * as fsSync from 'fs';
 import { Reviewer, ReviewResult, ReviewerOptions } from '../types/reviewer';
 import path from 'path';
 
-export class AIReviewer implements Reviewer {
+export default class AIReviewer implements Reviewer {
   private openai: OpenAI;
   private options: ReviewerOptions;
   private readonly name = 'AIReviewer';
