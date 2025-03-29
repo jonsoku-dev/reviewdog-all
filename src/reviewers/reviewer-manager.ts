@@ -157,21 +157,20 @@ export class ReviewerManager {
       for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
         await core.summary
           .addHeading(`${reviewer} (${reviewerResults.length}개)`, 3)
-          .addTable([
-            [
-              { data: '심각도', header: true },
-              { data: '파일', header: true },
-              { data: '라인', header: true },
-              { data: '메시지', header: true }
-            ],
-            ...reviewerResults.map(result => [
-              result.severity,
-              result.file,
-              result.line.toString(),
-              this.formatMessage(result.message)
-            ])
-          ])
           .addRaw('\n');
+
+        for (const result of reviewerResults) {
+          const severityIcon = {
+            error: '🔴',
+            warning: '⚠️',
+            info: 'ℹ️'
+          }[result.severity] || '';
+
+          await core.summary
+            .addRaw(`${severityIcon} **${result.file}:${result.line}**<br>`)
+            .addRaw(`${this.formatMessage(result.message)}`)
+            .addRaw('\n\n---\n\n');
+        }
       }
 
       await core.summary.write();
@@ -230,11 +229,11 @@ export class ReviewerManager {
         if (line.trim().startsWith('const ') || line.trim().startsWith('function ') || line.trim().startsWith('let ') || line.trim().startsWith('var ')) {
           return `\`${line.trim()}\``;
         }
-        // 일반 텍스트는 그대로 유지
+        // 일반 텍스트는 그대로 유지하고 줄바꿈 추가
         return line.trim();
       })
       .filter(line => line) // 빈 줄 제거
-      .join(' ') // 줄바꿈을 공백으로 변환
+      .join('<br>') // 줄바꿈을 <br>로 변환
       .replace(/\*\*/g, '✦') // 볼드 텍스트를 특수문자로 변환
       .replace(/\s+/g, ' ') // 연속된 공백을 하나로 통합
       .trim();
