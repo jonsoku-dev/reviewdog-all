@@ -159,13 +159,19 @@ runs:
     - name: Setup workspace
       shell: bash
       run: |
-        cd "${WORKSPACE_PATH}"
+        cd $WORKSPACE_PATH
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          mkdir -p ${{ inputs.workdir }}
+        fi
         
         # TypeScript 스크립트로 package.json 생성
         echo "작업 공간 설정 시작..."
         npx ts-node ${{ github.action_path }}/src/setup-workspace.ts
         
-        # 의존성 설치
+        # 의존성 설치 (workdir 내부에서 실행)
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          cd ${{ inputs.workdir }}
+        fi
         echo "의존성 설치 중..."
         npm install
 
