@@ -455,4 +455,5 @@ runs:
         SLACK_TOKEN: ${{ inputs.slack_token }}
       run: |
         cp -r ${{ github.action_path }}/src/slack.ts ${{ github.action_path }}/${{ inputs.workdir }}/slack.ts
+        export LINT_RESULTS=$(cat lint-results.json)
         npx ts-node ${{ github.action_path }}/${{ inputs.workdir }}/slack.ts
