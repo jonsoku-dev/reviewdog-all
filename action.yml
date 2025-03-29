@@ -99,7 +99,6 @@ runs:
         echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
         echo "FAIL_ON_ERROR=${{ inputs.fail_on_error }}" >> $GITHUB_ENV
         echo "COMMENT_MODE=${{ inputs.comment_mode }}" >> $GITHUB_ENV
-        echo "GITHUB_WORKSPACE=${{ inputs.workdir }}" >> $GITHUB_ENV
 
         # AI 리뷰어 설정
         echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV
