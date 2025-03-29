@@ -27,12 +27,34 @@ export class ReviewerManager {
   async runReviews(): Promise<void> {
     if (this.options.debug) {
       core.debug(`리뷰 실행 시작 (등록된 리뷰어: ${Array.from(this.reviewers.keys()).join(', ')})`);
+      core.debug(`전체 옵션: ${JSON.stringify({ ...this.options, apiKey: '***' }, null, 2)}`);
     }
 
     const results: ReviewResult[] = [];
 
     for (const [name, reviewer] of this.reviewers.entries()) {
       try {
+        // 리뷰어별 옵션 설정
+        const reviewerType = name.replace('Reviewer', '').toLowerCase();
+        const reviewerOptions = {
+          ...this.options,
+          enabled: process.env[`${reviewerType.toUpperCase()}_REVIEWER_ENABLED`] === 'true',
+          apiKey: process.env[`${reviewerType.toUpperCase()}_REVIEWER_API_KEY`],
+          model: process.env[`${reviewerType.toUpperCase()}_REVIEWER_MODEL`],
+          maxTokens: parseInt(process.env[`${reviewerType.toUpperCase()}_REVIEWER_MAX_TOKENS`] || '1000'),
+          temperature: parseFloat(process.env[`${reviewerType.toUpperCase()}_REVIEWER_TEMPERATURE`] || '0.7'),
+          filePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_FILE_PATTERNS`]?.split(','),
+          excludePatterns: process.env[`${reviewerType.toUpperCase()}_REVIEWER_EXCLUDE_PATTERNS`]?.split(',')
+        };
+
+        if (this.options.debug) {
+          const debugOptions = { ...reviewerOptions, apiKey: reviewerOptions.apiKey ? '***' : undefined };
+          core.debug(`${name} 리뷰어 옵션: ${JSON.stringify(debugOptions, null, 2)}`);
+        }
+
+        // 리뷰어 옵션 업데이트
+        Object.assign(reviewer, { options: reviewerOptions });
+
         if (await reviewer.isEnabled()) {
           if (this.options.debug) {
             core.debug(`${name} 리뷰어 실행 중...`);
