@@ -22,6 +22,7 @@ export interface ReviewerOptions {
 }
 
 export interface Reviewer {
+  options: ReviewerOptions;
   isEnabled(): Promise<boolean>;
   review(files: string[]): Promise<ReviewResult[]>;
 } 

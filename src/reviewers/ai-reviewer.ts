@@ -19,6 +19,7 @@ export default class AIReviewer implements Reviewer {
     if (!this._options.apiKey) {
       throw new Error('OpenAI API 키가 설정되지 않았습니다.');
     }
+    core.debug('나는 Open AI 리뷰어입니다.');
     this.openai = new OpenAI({ apiKey: this._options.apiKey });
     
     if (this._options.debug) {

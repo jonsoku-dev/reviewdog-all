@@ -53,7 +53,9 @@ export class ReviewerManager {
         }
 
         // 리뷰어 옵션 업데이트
-        Object.assign(reviewer, { options: reviewerOptions });
+        if ('options' in reviewer) {
+          (reviewer as any).options = reviewerOptions;
+        }
 
         if (await reviewer.isEnabled()) {
           if (this.options.debug) {
