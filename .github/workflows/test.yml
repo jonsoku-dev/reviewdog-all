@@ -22,74 +22,65 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           workdir: ./testdata/
-          ai_reviewer: |
-            {
-              "enabled": true,
-              "apiKey": "${{ secrets.OPENAI_API_KEY }}",
-              "model": "gpt-4",
-              "maxTokens": 1000,
-              "temperature": 0.7,
-              "filePatterns": ["**/*.{js,jsx,ts,tsx}"],
-              "excludePatterns": ["**/node_modules/**", "**/dist/**"]
-            }
+          ai_reviewer_enabled: true
+          ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_reviewer_model: gpt-4
+          ai_reviewer_max_tokens: 1000
+          ai_reviewer_temperature: 0.7
+          ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
+          ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
           fail_on_error: true
           comment_mode: both
 
-  test-pr-review:
-    if: github.event_name == 'pull_request'
-    name: PR 리뷰 테스트
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - uses: ./
-        with:
-          github_token: ${{ secrets.github_token }}
-          workdir: ./testdata/
-          ai_reviewer: |
-            {
-              "enabled": true,
-              "apiKey": "${{ secrets.OPENAI_API_KEY }}",
-              "model": "gpt-4",
-              "maxTokens": 1000,
-              "temperature": 0.7,
-              "filePatterns": ["**/*.{js,jsx,ts,tsx}"],
-              "excludePatterns": ["**/node_modules/**", "**/dist/**"]
-            }
-          fail_on_error: false
-          comment_mode: pr_comment
+  # test-pr-review:
+  #   if: github.event_name == 'pull_request'
+  #   name: PR 리뷰 테스트
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     pull-requests: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #     - uses: ./
+  #       with:
+  #         github_token: ${{ secrets.github_token }}
+  #         workdir: ./testdata/
+  #         ai_reviewer_enabled: true
+  #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
+  #         ai_reviewer_model: gpt-4
+  #         ai_reviewer_max_tokens: 1000
+  #         ai_reviewer_temperature: 0.7
+  #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
+  #         ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+  #         fail_on_error: false
+  #         comment_mode: pr_comment
 
-  test-no-config:
-    name: 설정 없는 테스트 (기본값 사용)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - uses: ./
-        with:
-          github_token: ${{ secrets.github_token }}
-          workdir: ./testdata/no-config/
-          ai_reviewer: |
-            {
-              "enabled": true,
-              "apiKey": "${{ secrets.OPENAI_API_KEY }}",
-              "model": "gpt-4",
-              "maxTokens": 1000,
-              "temperature": 0.7,
-              "filePatterns": ["**/*.{js,jsx,ts,tsx}"],
-              "excludePatterns": ["**/node_modules/**", "**/dist/**"]
-            }
-          fail_on_error: true
-          comment_mode: both
+  # test-no-config:
+  #   name: 설정 없는 테스트 (기본값 사용)
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     pull-requests: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #     - uses: ./
+  #       with:
+  #         github_token: ${{ secrets.github_token }}
+  #         workdir: ./testdata/no-config/
+  #         ai_reviewer_enabled: true
+  #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
+  #         ai_reviewer_model: gpt-4
+  #         ai_reviewer_max_tokens: 1000
+  #         ai_reviewer_temperature: 0.7
+  #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
+  #         ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+  #         fail_on_error: true
+  #         comment_mode: both

@@ -21,31 +21,61 @@ inputs:
     default: ${{ github.token }}
 
   # AI 리뷰어 설정
-  ai_reviewer:
-    description: "AI 리뷰어 설정 (JSON 형식)"
+  ai_reviewer_enabled:
+    description: "AI 리뷰어 활성화 여부"
     required: false
-    default: |
-      {
-        "enabled": true,
-        "apiKey": "",
-        "model": "gpt-4",
-        "maxTokens": 1000,
-        "temperature": 0.7,
-        "filePatterns": ["**/*.{js,jsx,ts,tsx}"],
-        "excludePatterns": ["**/node_modules/**", "**/dist/**"]
-      }
+    default: "true"
+    
+  ai_reviewer_api_key:
+    description: "OpenAI API 키"
+    required: false
+    default: ""
+    
+  ai_reviewer_model:
+    description: "사용할 AI 모델"
+    required: false
+    default: "gpt-4"
+    
+  ai_reviewer_max_tokens:
+    description: "최대 토큰 수"
+    required: false
+    default: "1000"
+    
+  ai_reviewer_temperature:
+    description: "AI 응답의 다양성 (0.0-1.0)"
+    required: false
+    default: "0.7"
+    
+  ai_reviewer_file_patterns:
+    description: "검사할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/*.{js,jsx,ts,tsx}"
+    
+  ai_reviewer_exclude_patterns:
+    description: "제외할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/node_modules/**,**/dist/**"
 
   # Axe 리뷰어 설정
-  axe_reviewer:
-    description: "Axe 접근성 리뷰어 설정 (JSON 형식)"
+  axe_reviewer_enabled:
+    description: "Axe 접근성 검사 활성화 여부"
     required: false
-    default: |
-      {
-        "enabled": false,
-        "filePatterns": ["**/*.{html,jsx,tsx}"],
-        "excludePatterns": ["**/node_modules/**", "**/dist/**"],
-        "standard": "WCAG2AA"
-      }
+    default: "false"
+    
+  axe_reviewer_file_patterns:
+    description: "검사할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/*.{html,jsx,tsx}"
+    
+  axe_reviewer_exclude_patterns:
+    description: "제외할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/node_modules/**,**/dist/**"
+    
+  axe_reviewer_standard:
+    description: "접근성 표준"
+    required: false
+    default: "WCAG2AA"
 
   # 결과 처리 설정
   fail_on_error:
@@ -71,22 +101,31 @@ runs:
         echo "COMMENT_MODE=${{ inputs.comment_mode }}" >> $GITHUB_ENV
         echo "GITHUB_WORKSPACE=${{ inputs.workdir }}" >> $GITHUB_ENV
 
-        # 리뷰어 설정
-        echo "AI_REVIEWER_CONFIG='${{ inputs.ai_reviewer }}'" >> $GITHUB_ENV
-        echo "AXE_REVIEWER_CONFIG='${{ inputs.axe_reviewer }}'" >> $GITHUB_ENV
+        # AI 리뷰어 설정
+        echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_API_KEY=${{ inputs.ai_reviewer_api_key }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_MODEL=${{ inputs.ai_reviewer_model }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_MAX_TOKENS=${{ inputs.ai_reviewer_max_tokens }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_TEMPERATURE=${{ inputs.ai_reviewer_temperature }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_FILE_PATTERNS=${{ inputs.ai_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.ai_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+
+        # Axe 리뷰어 설정
+        echo "AXE_REVIEWER_ENABLED=${{ inputs.axe_reviewer_enabled }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_FILE_PATTERNS=${{ inputs.axe_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.axe_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_STANDARD=${{ inputs.axe_reviewer_standard }}" >> $GITHUB_ENV
 
         # 활성화된 리뷰어 자동 설정
         ENABLED_REVIEWERS=""
         
         # AI 리뷰어 설정 확인
-        AI_ENABLED=$(echo '${{ inputs.ai_reviewer }}' | jq -r '.enabled')
-        if [ "$AI_ENABLED" = "true" ]; then
+        if [ "${{ inputs.ai_reviewer_enabled }}" = "true" ]; then
           ENABLED_REVIEWERS="ai"
         fi
         
         # Axe 리뷰어 설정 확인
-        AXE_ENABLED=$(echo '${{ inputs.axe_reviewer }}' | jq -r '.enabled')
-        if [ "$AXE_ENABLED" = "true" ]; then
+        if [ "${{ inputs.axe_reviewer_enabled }}" = "true" ]; then
           if [ -n "$ENABLED_REVIEWERS" ]; then
             ENABLED_REVIEWERS="$ENABLED_REVIEWERS,axe"
           else
