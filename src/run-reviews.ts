@@ -54,21 +54,26 @@ async function runReviews() {
         }
 
         // 리뷰어 동적 로드 및 등록
-        const ReviewerClass = await import(`./reviewers/${reviewerName}-reviewer`).then(m => m.default || m[`${reviewerName}Reviewer`]);
-        if (ReviewerClass) {
-          const reviewer = new ReviewerClass({
-            workdir: process.env.GITHUB_WORKSPACE || '.',
-            ...config
-          });
+        try {
+          const ReviewerClass = await import(`./reviewers/${reviewerName}-reviewer`);
+          if (ReviewerClass) {
+            const reviewer = new ReviewerClass.default({
+              workdir: process.env.WORKSPACE_PATH || '.',
+              ...config
+            });
 
-          if (await reviewer.isEnabled()) {
-            manager.registerReviewer(reviewer);
-            core.info(`${reviewerName} 리뷰어가 등록되었습니다.`);
-          } else {
-            core.warning(`${reviewerName} 리뷰어가 비활성화되어 있습니다.`);
+            if (await reviewer.isEnabled()) {
+              manager.registerReviewer(reviewer);
+              core.info(`${reviewerName} 리뷰어가 등록되었습니다.`);
+            } else {
+              core.warning(`${reviewerName} 리뷰어가 비활성화되어 있습니다.`);
+            }
           }
-        } else {
-          core.warning(`${reviewerName} 리뷰어를 찾을 수 없습니다.`);
+        } catch (error: any) {
+          core.warning(`${reviewerName} 리뷰어 모듈을 찾을 수 없습니다: ${error.message}`);
+          if (isDebug) {
+            core.debug(`모듈 로드 오류 상세: ${error.stack}`);
+          }
         }
       } catch (error) {
         core.warning(`${reviewerName} 리뷰어 로드 중 오류 발생: ${error}`);
